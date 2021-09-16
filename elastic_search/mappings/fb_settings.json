@@ -1,0 +1,76 @@
+{
+  "index": {
+    "mapping": {
+      "coerce": "false"
+    },
+    "max_ngram_diff": "23",
+    "refresh_interval": "5s",
+    "max_result_window": "10000",
+    "analysis": {
+      "filter": {
+        "ng": {
+          "type": "ngram",
+          "min_gram": "1",
+          "max_gram": "23"
+        },
+        "wd": {
+          "catenate_all": "true",
+          "generate_word_parts": "true",
+          "type": "word_delimiter",
+          "preserve_original": "false"
+        },
+        "asciifolding": {
+          "type": "asciifolding",
+          "preserve_original": "true"
+        }
+      },
+      "normalizer": {
+        "default2": {
+          "filter": [
+            "lowercase",
+            "icu_folding"
+          ],
+          "type": "custom",
+          "char_filter": []
+        }
+      },
+      "analyzer": {
+        "lowercase": {
+          "filter": [
+            "lowercase"
+          ],
+          "type": "custom",
+          "tokenizer": "icu_tokenizer"
+        },
+        "default": {
+          "filter": [
+            "wd",
+            "icu_folding"
+          ],
+          "type": "custom",
+          "tokenizer": "icu_tokenizer"
+        },
+        "ngram": {
+          "filter": [
+            "ng",
+            "icu_folding"
+          ],
+          "type": "custom",
+          "tokenizer": "icu_tokenizer"
+        }
+      }
+    },
+    "number_of_replicas": "0",
+    "queries": {
+      "cache": {
+        "enabled": "true"
+      }
+    },
+    "codec": "best_compression",
+    "number_of_shards": "4",
+    "shard": {
+      "check_on_startup": "false"
+    }
+  }
+}
+

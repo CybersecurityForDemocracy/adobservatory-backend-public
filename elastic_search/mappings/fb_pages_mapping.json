@@ -1,0 +1,29 @@
+{
+  "dynamic": "false",
+  "_routing": {
+    "required": false
+  },
+  "properties": {
+    "id": {
+      "type": "long"
+    },
+    "page_name": {
+      "type": "text",
+      "fields": {
+        "keyword": {
+          "type": "keyword",
+          "normalizer": "default2"
+        },
+        "ngram": {
+          "type": "text",
+          "analyzer": "ngram",
+          "search_analyzer": "lowercase"
+        }
+      }
+    },
+    "lifelong_amount_spent": {
+      "type": "rank_feature"
+    }
+  }
+}
+
