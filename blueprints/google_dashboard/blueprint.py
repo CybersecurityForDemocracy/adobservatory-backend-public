@@ -66,7 +66,7 @@ def top_political_advertisers_since_date(region="US"):
     page_size = min(int(request.args.get("page_size", DEFAULT_PAGE_SIZE)), MAX_PAGE_SIZE)
     start_date = request.args.get("start_date", DEFAULT_START_DATE)
     end_date = request.args.get("end_date", datetime.date.today())
-    with db_functions.get_ad_info_database_sqlalchemy_session() as session:
+    with db_functions.get_google_ads_database_sqlalchemy_session() as session:
         (
             query_results,
             effective_start_date,
@@ -97,7 +97,7 @@ def top_advertisers_since_date():
     page_size = min(int(request.args.get("page_size", DEFAULT_PAGE_SIZE)), MAX_PAGE_SIZE)
     start_date = request.args.get("start_date", DEFAULT_START_DATE)
     end_date = request.args.get("end_date", datetime.date.today())
-    with db_functions.get_ad_info_database_sqlalchemy_session() as session:
+    with db_functions.get_google_ads_database_sqlalchemy_session() as session:
         query_results = queries.top_ad_uploaders_since_date(
             session,
             start_date=start_date,
@@ -119,7 +119,7 @@ def advertiser_ads(advertiser_name):
     end_date = request.args.get("end_date", None)
     advertiser_name = unquote(advertiser_name)
 
-    with db_functions.get_ad_info_database_sqlalchemy_session() as session:
+    with db_functions.get_google_ads_database_sqlalchemy_session() as session:
         political_ads = queries.search_political_ads(
             session,
             advertiser_name=advertiser_name,
@@ -154,7 +154,7 @@ def advertiser_ads_by_same_uploader(advertiser_name):
         "missing_ads_only", True
     )  # the reason we use this endpoint is to find ads from the same uploader that aren't in the archive (since those are maybe missed ads, or non-political ads by this advertiser)
 
-    with db_functions.get_ad_info_database_sqlalchemy_session() as session:
+    with db_functions.get_google_ads_database_sqlalchemy_session() as session:
         return {
             "ads_by_same_uploader": [
                 {"youtube_video": yv}
@@ -180,7 +180,7 @@ def spend_of_advertiser(advertiser_name):
     end_date = request.args.get("end_date", None)
     advertiser_name = unquote(advertiser_name)
 
-    with db_functions.get_ad_info_database_sqlalchemy_session() as session:
+    with db_functions.get_google_ads_database_sqlalchemy_session() as session:
         spend = queries.spend_of_advertiser_by_week(
             session,
             advertiser_name,
@@ -197,7 +197,7 @@ def spend_of_advertiser_by_region(advertiser_name):
     end_date = request.args.get("end_date", None)
     advertiser_name = unquote(advertiser_name)
 
-    with db_functions.get_ad_info_database_sqlalchemy_session() as session:
+    with db_functions.get_google_ads_database_sqlalchemy_session() as session:
         spend_by_region = queries.spend_of_advertiser_by_region(
             session,
             advertiser_name,
@@ -233,7 +233,7 @@ def search():
     # 3. videos we've observed from AdObserver (search_observed_video_ads(observed_only=True) / YoutubeVideo)
     # 4. videos we've observed from AdObserver that Google considers political (search_observed_video_ads(observed_only=True, political_only=True).
 
-    with db_functions.get_ad_info_database_sqlalchemy_session() as session:
+    with db_functions.get_google_ads_database_sqlalchemy_session() as session:
         if not videos_only:
             return {
                 "results": [
@@ -280,7 +280,7 @@ def autocomplete_advertiser_name():
     advertiser_name_substr = request.args.get("advertiser_name_substr")
     if len(advertiser_name_substr) <= 2:
         return {"matches": []}
-    with db_functions.get_ad_info_database_sqlalchemy_session() as session:
+    with db_functions.get_google_ads_database_sqlalchemy_session() as session:
         return {
             "matches": queries.autocomplete_advertiser_name(
                 session, advertiser_name_substr
@@ -308,7 +308,7 @@ def all_missed_ads():
 
     advertiser_substring = request.args.get("advertiser_substring")
 
-    with db_functions.get_ad_info_database_sqlalchemy_session() as session:
+    with db_functions.get_google_ads_database_sqlalchemy_session() as session:
         return {
             "result": queries.all_kinds_of_missed_ads(session, page=page, page_size=page_size, kind=kind, advertiser_substring=advertiser_substring)
         }    
@@ -317,7 +317,7 @@ def all_missed_ads():
 def missed_ads():
     page = int(request.args.get("page", 1))
     page_size = min(int(request.args.get("page_size", DEFAULT_PAGE_SIZE)), MAX_PAGE_SIZE)
-    with db_functions.get_ad_info_database_sqlalchemy_session() as session:
+    with db_functions.get_google_ads_database_sqlalchemy_session() as session:
         return {
             "result": (
                 {"youtube_video": yv, "political_value": [value.value for value in sorted(yv.values, key=lambda val: val.model.created_at) if value.model.model_name == "politics"][0]}
@@ -333,7 +333,7 @@ def disappeared_ads():
     page = int(request.args.get("page", 1))
     page_size = min(int(request.args.get("page_size", DEFAULT_PAGE_SIZE)), MAX_PAGE_SIZE)
     advertiser_name = request.args.get("advertiser_name", None)
-    with db_functions.get_ad_info_database_sqlalchemy_session() as session:
+    with db_functions.get_google_ads_database_sqlalchemy_session() as session:
         return {
             "disappeared_ads": [
                 {
@@ -350,7 +350,7 @@ def disappeared_ads():
 @google_dashboard_blueprint.route("/disappeared_youtube_ads")
 def disappeared_youtube_ads():
     # doesn't paginate for dumb reasons
-    with db_functions.get_ad_info_database_sqlalchemy_session() as session:
+    with db_functions.get_google_ads_database_sqlalchemy_session() as session:
         return {
             "disappeared_ads": [
                 {
@@ -366,7 +366,7 @@ def disappeared_youtube_ads():
 
 @google_dashboard_blueprint.route("/disappeared_ad_counts")
 def disappeared_ad_counts():
-    with db_functions.get_ad_info_database_sqlalchemy_session() as session:
+    with db_functions.get_google_ads_database_sqlalchemy_session() as session:
         return {
             "disappeared_ad_counts": [
                 {"advertiser_name": item[0], "count": item[2], "min_spend": item[3]}
@@ -381,7 +381,7 @@ def violating_ads():
     # TODO: support filtering to only the ones for which we have content to show
     page = int(request.args.get("page", 1))
     page_size = min(int(request.args.get("page_size", DEFAULT_PAGE_SIZE)), MAX_PAGE_SIZE)
-    with db_functions.get_ad_info_database_sqlalchemy_session() as session:
+    with db_functions.get_google_ads_database_sqlalchemy_session() as session:
         return {
             "violating_ads": [
                 {

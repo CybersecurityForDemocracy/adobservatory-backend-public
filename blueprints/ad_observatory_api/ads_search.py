@@ -88,18 +88,18 @@ def humanize_int(i):
     return humanize.intword(i)
 
 def get_topic_id_to_name_map():
-    with db_functions.get_ad_info_database_connection() as db_connection:
+    with db_functions.get_fb_ads_database_connection() as db_connection:
         db_interface = db_functions.AdsIfoDBInterface(db_connection)
         return db_interface.topics()
 
 def get_cluster_languages_code_to_name():
-    with db_functions.get_ad_info_database_connection() as db_connection:
+    with db_functions.get_fb_ads_database_connection() as db_connection:
         db_interface = db_functions.AdsIfoDBInterface(db_connection)
         language_code_list = db_interface.cluster_languages()
     return make_language_code_to_name_map(language_code_list)
 
 def get_languages_code_to_name():
-    with db_functions.get_ad_info_database_connection() as db_connection:
+    with db_functions.get_fb_ads_database_connection() as db_connection:
         db_interface = db_functions.AdsIfoDBInterface(db_connection)
         language_code_list = db_interface.ad_creative_languages()
     return make_language_code_to_name_map(language_code_list)
@@ -266,7 +266,7 @@ def get_ad_cluster_data_from_full_text_search(query, page_id, min_date, max_date
     if not archive_ids:
         logging.info('Full text search returned no results.')
         return []
-    with db_functions.get_ad_info_database_connection() as db_connection:
+    with db_functions.get_fb_ads_database_connection() as db_connection:
         db_interface = db_functions.AdsIfoDBInterface(db_connection)
         # TODO(macpd): use the archive_ids from search results for screenshot cover photo.
         return db_interface.ad_cluster_details_for_archive_ids(archive_ids, min_date, max_date,
@@ -292,7 +292,7 @@ def get_ad_data_from_full_text_search(query, page_id, min_date, max_date, region
     if not archive_ids:
         logging.info('Full text search returned no results.')
         return []
-    with db_functions.get_ad_info_database_connection() as db_connection:
+    with db_functions.get_fb_ads_database_connection() as db_connection:
         db_interface = db_functions.AdsIfoDBInterface(db_connection)
         return db_interface.ad_details_of_archive_ids(archive_ids, min_date, max_date, region,
                                                       gender, age_group, language, order_by,
@@ -304,7 +304,7 @@ def get_num_bits_different(archive_id_and_simhash1, archive_id_and_simhash2):
 
 @cached(ttl=date_utils.SIX_HOURS_IN_SECONDS)
 def get_image_simhash_bktree():
-    with db_functions.get_ad_info_database_connection() as db_connection:
+    with db_functions.get_fb_ads_database_connection() as db_connection:
         db_interface = db_functions.AdsIfoDBInterface(db_connection)
         simhash_to_archive_id_set = db_interface.all_ad_creative_image_simhashes()
 
@@ -346,7 +346,7 @@ def reverse_image_search(image_file_stream, bit_difference_threshold):
     if not archive_ids:
         logging.info('Full text search returned no results.')
         return []
-    with db_functions.get_ad_info_database_connection() as db_connection:
+    with db_functions.get_fb_ads_database_connection() as db_connection:
         db_interface = db_functions.AdsIfoDBInterface(db_connection)
         return db_interface.ad_cluster_details_for_archive_ids(
                 list(archive_ids), min_date=None, max_date=None, region=None, gender=None,
@@ -412,14 +412,14 @@ def handle_ad_search(topic_id, min_date, max_date, gender, age_range, region, la
             order_direction=order_direction, limit=num_requested, offset=offset)
 
     if page_id:
-        with db_functions.get_ad_info_database_connection() as db_connection:
+        with db_functions.get_fb_ads_database_connection() as db_connection:
             db_interface = db_functions.AdsIfoDBInterface(db_connection)
             return db_interface.ad_details_of_page_id(
                 page_id, min_date=min_date, max_date=max_date, region=region, gender=gender,
                 age_group=age_range, language=language, order_by=order_by,
                 order_direction=order_direction, limit=num_requested, offset=offset)
 
-    with db_functions.get_ad_info_database_connection() as db_connection:
+    with db_functions.get_fb_ads_database_connection() as db_connection:
         db_interface = db_functions.AdsIfoDBInterface(db_connection)
         return db_interface.ad_details_of_topic(
             topic_id, min_date=min_date, max_date=max_date, region=region, gender=gender,
@@ -512,14 +512,14 @@ def handle_ad_cluster_search(topic_id, min_date, max_date, gender, age_range, re
             order_direction=order_direction, limit=num_requested, offset=offset)
 
     if page_id:
-        with db_functions.get_ad_info_database_connection() as db_connection:
+        with db_functions.get_fb_ads_database_connection() as db_connection:
             db_interface = db_functions.AdsIfoDBInterface(db_connection)
             return db_interface.ad_cluster_details_for_page_id(
                 page_id, min_date=min_date, max_date=max_date, region=region, gender=gender,
                 age_group=age_range, language=language, order_by=order_by,
                 order_direction=order_direction, limit=num_requested, offset=offset)
 
-    with db_functions.get_ad_info_database_connection() as db_connection:
+    with db_functions.get_fb_ads_database_connection() as db_connection:
         db_interface = db_functions.AdsIfoDBInterface(db_connection)
         return db_interface.topic_top_ad_clusters_by_spend(
             topic_id, min_date=min_date, max_date=max_date, region=region, gender=gender,
@@ -596,7 +596,7 @@ def get_ad_details(archive_id):
 
 @cached(ttl=date_utils.SIX_HOURS_IN_SECONDS)
 def cached_get_ad_details(archive_id):
-    db_connection = db_functions.get_ad_info_database_connection()
+    db_connection = db_functions.get_fb_ads_database_connection()
     db_interface = db_functions.AdsIfoDBInterface(db_connection)
 
     ad_data = defaultdict(list)
@@ -651,7 +651,7 @@ def get_ad_cluster_details(ad_cluster_id):
 
 @cached(ttl=date_utils.SIX_HOURS_IN_SECONDS)
 def cached_get_ad_cluster_details(ad_cluster_id):
-    db_connection = db_functions.get_ad_info_database_connection()
+    db_connection = db_functions.get_fb_ads_database_connection()
     db_interface = db_functions.AdsIfoDBInterface(db_connection)
 
     ad_cluster_data = defaultdict(list)
@@ -710,7 +710,7 @@ def cached_get_ad_cluster_details(ad_cluster_id):
 
 @blueprint.route('/archive-id/<int:archive_id>/cluster')
 def get_cluster_details_from_archive_id(archive_id):
-    db_connection = db_functions.get_ad_info_database_connection()
+    db_connection = db_functions.get_fb_ads_database_connection()
     db_interface = db_functions.AdsIfoDBInterface(db_connection)
     ad_cluster_id = db_interface.get_cluster_id_from_archive_id(archive_id)
     if ad_cluster_id is None:

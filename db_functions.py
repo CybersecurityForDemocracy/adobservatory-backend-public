@@ -42,85 +42,25 @@ DatabaseConnectionParams = namedtuple('DatabaseConnectionParams',
 
 
 
-def get_ad_screener_database_connection_params():
+def get_fb_ads_database_connection_params():
     return DatabaseConnectionParams(
-        host=os.environ['AD_SCREENER_DATABASE_HOST'],
-        database_name=os.environ['AD_SCREENER_DATABASE_DBNAME'],
-        username=os.environ['AD_SCREENER_DATABASE_USER'],
-        password=os.environ['AD_SCREENER_DATABASE_PASSWORD'],
-        port=os.environ['AD_SCREENER_DATABASE_PORT'],
-        default_schema=os.environ.get('AD_SCREENER_DATABASE_SCHEMA'),
+        host=os.environ['FB_ADS_DATABASE_HOST'],
+        database_name=os.environ['FB_ADS_DATABASE_DBNAME'],
+        username=os.environ['FB_ADS_DATABASE_USER'],
+        password=os.environ['FB_ADS_DATABASE_PASSWORD'],
+        port=os.environ['FB_ADS_DATABASE_PORT'],
+        default_schema=os.environ.get('FB_ADS_DATABASE_SCHEMA'),
         sslrootcert=None,
         sslcert=None,
         sslkey=None)
 
-def get_ad_screener_database_connection():
-    """Get connection to ad feedback database.
-
-    Returns:
-        psycopg2.connection ready to be used.
-    """
-    return get_database_connection(get_ad_screener_database_connection_params())
-
-def get_ad_observatory_api_user_database_connection_params():
-    return DatabaseConnectionParams(
-        host=os.environ['AD_OBSERVATORY_API_USER_DATABASE_HOST'],
-        database_name=os.environ['AD_OBSERVATORY_API_USER_DATABASE_DBNAME'],
-        username=os.environ['AD_OBSERVATORY_API_USER_DATABASE_USER'],
-        password=os.environ['AD_OBSERVATORY_API_USER_DATABASE_PASSWORD'],
-        port=os.environ['AD_OBSERVATORY_API_USER_DATABASE_PORT'],
-        default_schema=os.environ.get('AD_OBSERVATORY_API_USER_DATABASE_SCHEMA'),
-        sslrootcert=None,
-        sslcert=None,
-        sslkey=None)
-
-def get_ad_observatory_api_user_database_connection():
-    """Get connection to ad observatory users database.
-
-    Returns:
-        psycopg2.connection ready to be used.
-    """
-    return get_database_connection(get_ad_observatory_api_user_database_connection_params())
-
-def get_ad_info_database_connection_params():
-    return DatabaseConnectionParams(
-        host=os.environ['AD_INFO_DATABASE_HOST'],
-        database_name=os.environ['AD_INFO_DATABASE_DBNAME'],
-        username=os.environ['AD_INFO_DATABASE_USER'],
-        password=os.environ['AD_INFO_DATABASE_PASSWORD'],
-        port=os.environ['AD_INFO_DATABASE_PORT'],
-        default_schema=os.environ.get('AD_INFO_DATABASE_SCHEMA'),
-        sslrootcert=None,
-        sslcert=None,
-        sslkey=None)
-
-def get_ad_info_database_connection():
+def get_fb_ads_database_connection():
     """Get connection to ad information database.
 
     Returns:
         psycopg2.connection ready to be used.
     """
-    return get_database_connection(get_ad_info_database_connection_params())
-
-def get_notification_database_connection_params():
-    return DatabaseConnectionParams(
-        host=os.environ['NOTIFICATIONS_DATABASE_HOST'],
-        database_name=os.environ['NOTIFICATIONS_DATABASE_DBNAME'],
-        username=os.environ['NOTIFICATIONS_DATABASE_USER'],
-        password=os.environ['NOTIFICATIONS_DATABASE_PASSWORD'],
-        port=os.environ['NOTIFICATIONS_DATABASE_PORT'],
-        default_schema=os.environ.get('NOTIFICATIONS_DATABASE_SCHEMA'),
-        sslrootcert=None,
-        sslcert=None,
-        sslkey=None)
-
-def get_notification_database_connection():
-    """Get connection to notifications database.
-
-    Returns:
-        psycopg2.connection ready to be used.
-    """
-    return get_database_connection(get_notification_database_connection_params())
+    return get_database_connection(get_fb_ads_database_connection_params())
 
 def get_database_connection(database_connection_params):
     """Get pyscopg2 database connection using the provided params.
@@ -158,7 +98,7 @@ def get_google_database_connection_params():
         sslkey=None)
 
 @contextmanager
-def get_ad_info_database_sqlalchemy_session():
+def get_google_ads_database_sqlalchemy_session():
     """Provide a transactional scope around a series of operations."""
     database_connection_params = get_google_database_connection_params()
     connection_url = (

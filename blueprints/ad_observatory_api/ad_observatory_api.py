@@ -140,7 +140,7 @@ def get_top_spenders_for_region(region_name):
 
 @cached(ttl=date_utils.SIX_HOURS_IN_SECONDS)
 def cached_get_top_spenders_for_region(region_name, start_date, end_date, aggregate_by):
-    with db_functions.get_ad_info_database_connection() as db_connection:
+    with db_functions.get_fb_ads_database_connection() as db_connection:
         db_interface = db_functions.AdsIfoDBInterface(db_connection)
 
         results = db_interface.get_spender_for_region(region_name, start_date, end_date,
@@ -162,7 +162,7 @@ def get_page_data(page_id):
 
 @cached(ttl=date_utils.SIX_HOURS_IN_SECONDS)
 def cached_get_page_data(page_id):
-    with db_functions.get_ad_info_database_connection() as db_connection:
+    with db_functions.get_fb_ads_database_connection() as db_connection:
         db_interface = db_functions.AdsIfoDBInterface(db_connection)
         page_data = db_interface.get_page_data(page_id)
         if page_data:
@@ -187,7 +187,7 @@ def get_total_spending_by_spender_in_region_since_date(page_id, region_name):
 @cached(ttl=date_utils.SIX_HOURS_IN_SECONDS)
 def cached_total_spending_by_spender_in_region_since_date(page_id, region_name, start_date,
                                                           end_date, aggregate_by):
-    with db_functions.get_ad_info_database_connection() as db_connection:
+    with db_functions.get_fb_ads_database_connection() as db_connection:
         db_interface = db_functions.AdsIfoDBInterface(db_connection)
         page_owner = db_interface.page_owner(page_id)
         results = db_interface.page_spend_in_region_since_date(
@@ -227,7 +227,7 @@ def spending_by_week_by_spender_of_region(page_id, region_name):
 @cached(ttl=date_utils.SIX_HOURS_IN_SECONDS)
 def cached_spending_by_week_by_spender_of_region(page_id, region_name, start_date, end_date,
                                                  aggregate_by):
-    with db_functions.get_ad_info_database_connection() as db_connection:
+    with db_functions.get_fb_ads_database_connection() as db_connection:
         db_interface = db_functions.AdsIfoDBInterface(db_connection)
         if not end_date:
             end_date = db_interface.page_and_region_latest_last_7_days_report_date(
@@ -309,7 +309,7 @@ def get_spenders_for_topic_in_region(topic_name, region_name):
 @cached(ttl=date_utils.SIX_HOURS_IN_SECONDS)
 def cached_spenders_for_topic_in_region(topic_name, region_name, start_date, end_date, aggregate_by,
                                         max_records=None):
-    with db_functions.get_ad_info_database_connection() as db_connection:
+    with db_functions.get_fb_ads_database_connection() as db_connection:
         db_interface = db_functions.AdsIfoDBInterface(db_connection)
         topics = db_interface.topics()
         topic_id = topics.get(topic_name, -1)
@@ -350,7 +350,7 @@ def top_topics_in_region(region_name):
 
 @cached(ttl=date_utils.SIX_HOURS_IN_SECONDS)
 def top_topic_in_region(region_name, start_date, end_date, max_records=None):
-    with db_functions.get_ad_info_database_connection() as db_connection:
+    with db_functions.get_fb_ads_database_connection() as db_connection:
         db_interface = db_functions.AdsIfoDBInterface(db_connection)
         topic_map = db_interface.topic_id_to_name_map()
         ad_spend_records = db_interface.get_spend_for_topics_in_region(region_name, start_date,
@@ -393,7 +393,7 @@ def spend_by_week_for_topic(topic_name, region_name):
 def cached_spend_by_week_for_topic(topic_name, region_name, start_date, end_date, time_period_unit,
                                    time_period_length):
 
-    with db_functions.get_ad_info_database_connection() as db_connection:
+    with db_functions.get_fb_ads_database_connection() as db_connection:
         db_interface = db_functions.AdsIfoDBInterface(db_connection)
         topics = db_interface.topics()
         ad_spend_records = db_interface.total_spend_of_topic_in_region(
@@ -513,7 +513,7 @@ def cached_spend_by_time_period_by_topic_of_page(page_id, start_date, end_date, 
     #time_unit = request.args.get('time_unit', 'week')
     time_unit = 'week'
 
-    with db_functions.get_ad_info_database_connection() as db_connection:
+    with db_functions.get_fb_ads_database_connection() as db_connection:
         db_interface = db_functions.AdsIfoDBInterface(db_connection)
         page_spend_over_time = db_interface.page_spend_by_topic_since_date(
             page_id, start_date, end_date, aggregate_by)
@@ -558,7 +558,7 @@ def cached_spend_by_time_period_by_topic_of_page_in_region(page_id, region_name,
     #time_unit = request.args.get('time_unit', 'week')
     time_unit = 'week'
 
-    with db_functions.get_ad_info_database_connection() as db_connection:
+    with db_functions.get_fb_ads_database_connection() as db_connection:
         db_interface = db_functions.AdsIfoDBInterface(db_connection)
         page_spend_over_time = db_interface.spend_by_topic_of_page_in_region(
             page_id, region_name, start_date, end_date, aggregate_by)
@@ -606,7 +606,7 @@ def cached_spend_by_time_period_by_topic_of_region(region_name, start_date, end_
     #time_unit = request.args.get('time_unit', 'week')
     time_unit = 'week'
 
-    with db_functions.get_ad_info_database_connection() as db_connection:
+    with db_functions.get_fb_ads_database_connection() as db_connection:
         db_interface = db_functions.AdsIfoDBInterface(db_connection)
         region_spend_over_time = db_interface.spend_by_topic_in_region(
             region_name, start_date, end_date)
@@ -644,7 +644,7 @@ def total_spend_by_purpose_of_page(page_id):
 
 @cached(ttl=date_utils.SIX_HOURS_IN_SECONDS)
 def cached_total_spend_by_purpose_of_page(page_id, start_date, end_date, aggregate_by):
-    with db_functions.get_ad_info_database_connection() as db_connection:
+    with db_functions.get_fb_ads_database_connection() as db_connection:
         db_interface = db_functions.AdsIfoDBInterface(db_connection)
         total_page_spend_by_type = db_interface.total_page_spend_by_type(page_id, start_date,
                                                                          end_date, aggregate_by)
@@ -675,7 +675,7 @@ def total_spend_by_purpose_of_region(region_name):
 
 @cached(ttl=date_utils.SIX_HOURS_IN_SECONDS)
 def cached_total_spend_by_purpose_of_region(region_name, start_date, end_date):
-    with db_functions.get_ad_info_database_connection() as db_connection:
+    with db_functions.get_fb_ads_database_connection() as db_connection:
         db_interface = db_functions.AdsIfoDBInterface(db_connection)
         total_spend_by_type_in_region = db_interface.total_spend_by_type_in_region(
             region_name, start_date, end_date)
@@ -704,7 +704,7 @@ def total_spend_by_purpose_of_page_of_region(page_id, region_name):
 @cached(ttl=date_utils.SIX_HOURS_IN_SECONDS)
 def cached_total_spend_by_purpose_of_page_of_region(page_id, region_name, start_date, end_date,
                                                     aggregate_by):
-    with db_functions.get_ad_info_database_connection() as db_connection:
+    with db_functions.get_fb_ads_database_connection() as db_connection:
         db_interface = db_functions.AdsIfoDBInterface(db_connection)
         total_page_spend_by_type = db_interface.total_spend_by_purpose_of_page_of_region(
                 page_id, region_name, start_date, end_date, aggregate_by)
@@ -742,7 +742,7 @@ def cached_spend_by_time_period_by_purpose_of_page_in_region(page_id, region_nam
     #time_unit = request.args.get('time_unit', 'week')
     time_unit = 'week'
 
-    with db_functions.get_ad_info_database_connection() as db_connection:
+    with db_functions.get_fb_ads_database_connection() as db_connection:
         db_interface = db_functions.AdsIfoDBInterface(db_connection)
         page_spend_over_time = db_interface.spend_by_purpose_of_page_in_region(
             page_id, region_name, start_date, end_date, aggregate_by)
@@ -781,7 +781,7 @@ def total_spend_of_page_by_region(page_id):
 
 @cached(ttl=date_utils.SIX_HOURS_IN_SECONDS)
 def cached_total_spend_of_page_by_region(page_id, start_date, end_date, aggregate_by):
-    with db_functions.get_ad_info_database_connection() as db_connection:
+    with db_functions.get_fb_ads_database_connection() as db_connection:
         db_interface = db_functions.AdsIfoDBInterface(db_connection)
         results = db_interface.page_spend_by_region_since_date(
             page_id, start_date, end_date, aggregate_by)
@@ -833,7 +833,7 @@ def targeting_category_counts_for_page(page_id):
 
 @cached(ttl=date_utils.SIX_HOURS_IN_SECONDS)
 def cached_targeting_category_counts_for_page(page_id, start_date, end_date, aggregate_by):
-    with db_functions.get_ad_info_database_connection() as db_connection:
+    with db_functions.get_fb_ads_database_connection() as db_connection:
         db_interface = db_functions.AdsIfoDBInterface(db_connection)
         targeting_category_count_records = db_interface.get_targeting_category_counts_for_page(
             page_id, start_date, end_date, aggregate_by)
@@ -858,7 +858,7 @@ def race_pages():
 
 @cached(ttl=date_utils.SIX_HOURS_IN_SECONDS)
 def cached_race_pages():
-    with db_functions.get_ad_info_database_connection() as db_connection:
+    with db_functions.get_fb_ads_database_connection() as db_connection:
         db_interface = db_functions.AdsIfoDBInterface(db_connection)
         data = {row['race_id']: row['page_ids'] for row in db_interface.race_pages()}
         return json.dumps(data)
@@ -874,7 +874,7 @@ def candidates_in_race(race_id):
 @cached(ttl=date_utils.SIX_HOURS_IN_SECONDS)
 def cached_candidates_in_race(race_id):
     data = {'race_id': race_id, 'candidates': []}
-    with db_functions.get_ad_info_database_connection() as db_connection:
+    with db_functions.get_fb_ads_database_connection() as db_connection:
         db_interface = db_functions.AdsIfoDBInterface(db_connection)
         candidates_info = db_interface.candidates_in_race(race_id)
         if not candidates_info:
@@ -894,7 +894,7 @@ def get_races():
 
 @cached
 def cached_get_races():
-    with db_functions.get_ad_info_database_connection() as db_connection:
+    with db_functions.get_fb_ads_database_connection() as db_connection:
         db_interface = db_functions.AdsIfoDBInterface(db_connection)
         return json.dumps({row['state']: list(filter(None, row['races']))
                            for row in db_interface.state_races()})
@@ -907,6 +907,6 @@ def get_missed_ads():
 
 @cached(ttl=date_utils.SIX_HOURS_IN_SECONDS)
 def cached_get_missed_ads(country='US'):
-    with db_functions.get_ad_info_database_connection() as db_connection:
+    with db_functions.get_fb_ads_database_connection() as db_connection:
         db_interface = db_functions.AdsIfoDBInterface(db_connection)
         return json.dumps(list(db_interface.missed_ads(country)))
