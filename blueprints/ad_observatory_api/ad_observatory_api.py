@@ -3,7 +3,6 @@
 import datetime
 import decimal
 import itertools
-import logging
 from operator import itemgetter
 
 from flask import Blueprint, request, Response, abort
