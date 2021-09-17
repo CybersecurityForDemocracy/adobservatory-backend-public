@@ -6,7 +6,7 @@ from sqlalchemy.dialects import postgresql
 from memoization import cached
 import memoization.caching.general.keys_order_independent as keys_toolkit_order_independent
 
-import blueprints.google_dashboard.models as models
+from blueprints.google_dashboard import models
 
 
 ONE_HOUR_IN_SECONDS = datetime.timedelta(hours=1).total_seconds()
@@ -1086,7 +1086,7 @@ def political_seeming_missed_ads_query(session, threshold=POLITICAL_THRESHOLD, a
     query = query.outerjoin(models.GoogleAdCreative).filter(
         models.GoogleAdCreative.ad_id == None
     )
-    if advertiser_substring is not None: 
+    if advertiser_substring is not None:
         query = query.filter(models.YoutubeVideo.uploader.ilike(f'%{advertiser_substring}%'))
     query = query.filter(
         models.InferenceValue.value > threshold
@@ -1191,7 +1191,7 @@ def violating_ads_query(session, include_advertiser_name=False, advertiser_name=
             raise TypeError("invalid arguments; at least one of advertiser_name and advertiser_substring must be None")
         if advertiser_name is not None:
             query = query.filter(models.AdvertiserStat.advertiser_name == advertiser_name)
-        elif advertiser_substring is not None: 
+        elif advertiser_substring is not None:
             query = query.filter(models.AdvertiserStat.advertiser_name.ilike(f'%{advertiser_substring}%'))
     query = query.outerjoin(models.YoutubeVideo) # this has to be an outerjoin because some violating ads aren't videos (and therefore don't join to the videos table)
     query = query.filter(models.GoogleAdCreative.policy_violation_date != None)
@@ -1227,43 +1227,3 @@ def violating_ads(session, page=1, page_size=PAGE_SIZE):
     query = query.options(db.orm.subqueryload(models.GoogleAdCreative.creative_stat))
     query = query.order_by(models.GoogleAdCreative.policy_violation_date.desc())
     return list(query.slice((page - 1) * page_size, page * page_size))
-
-
-if __name__ == "__main__":
-    from sqlalchemy import create_engine
-    from sqlalchemy.orm import sessionmaker
-    from dotenv import load_dotenv
-    from os import environ
-
-    load_dotenv()
-
-    engine = create_engine(environ.get("DATABASE_URL"), echo=True)
-    Session = sessionmaker(bind=engine)
-    session = Session()
-    start_time = datetime.datetime.now()
-
-    # advs, start, end = top_political_advertisers_since_date(session, start_date="2020-12-01", region='US')
-    # for item in advs:
-    #   print(item.advertiser_name, item.advertiser_id, item.spend_usd)
-    # print(start, end)
-    # for item in top_ad_uploaders_since_date(session, start_date="2020-12-01"):
-    #   print(item)
-    # print(spend_by_advertiser(session, 'AR534531769731383296'))
-    # for google_ad_creative in search_political_ads(session, 'ossoff'):
-    #   print(google_ad_creative.ad_id, google_ad_creative.youtube_ad_id, google_ad_creative.ad_text, google_ad_creative.youtube_video, google_ad_creative.creative_stat)
-    # for google_ad_creative in search_political_ads(session, advertiser_id='AR534531769731383296', querystring='help', start_date="2020-10-20"):
-    #   print(google_ad_creative.ad_id, google_ad_creative.youtube_ad_id, google_ad_creative.ad_text, google_ad_creative.youtube_video, google_ad_creative.creative_stat)
-    # print(search_observed_video_ads(session))
-    print(list(get_uploader_ids_for_advertiser(session, "BIDEN FOR PRESIDENT")))
-    # for item in jobby_seeming_ads(session):
-    #   print(item, item.value[0].value)
-    # for item in disappearing_ads(session):
-    #   print(item)
-    # for item in disappearing_ads_counts(session):
-    #   print(item)
-    # for item in disappearing_youtube_ads(session):
-    #   print(item, item.youtube_video)
-    # print(spend_of_advertiser_by_region(session, "JON OSSOFF FOR SENATE"))
-    # for item in violating_ads(session):
-    #     print(item)
-    print("took {}".format(datetime.datetime.now() - start_time))
