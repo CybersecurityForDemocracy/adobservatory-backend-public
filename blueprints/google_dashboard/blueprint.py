@@ -1,21 +1,17 @@
 import json
 import datetime
-import logging
 from urllib.parse import unquote
 
 from flask import (
-    redirect,
     request,
     Blueprint,
-    url_for,
     abort
 )
 from flask.json import JSONEncoder
 
-import blueprints.google_dashboard.queries as queries
+from blueprints.google_dashboard import queries
 
 import db_functions
-#  from blueprints.common import authentication
 
 DEFAULT_PAGE_SIZE = "30"
 MAX_PAGE_SIZE = 300
@@ -304,14 +300,14 @@ def all_missed_ads():
     page_size = min(int(request.args.get("page_size", DEFAULT_PAGE_SIZE)), MAX_PAGE_SIZE)
     kind = request.args.get("kind")
     if kind and kind not in ["missed", "violative", "disappearing", "issue_advertiser"]:
-       abort(400, "unknown kind of missed ad `{}`".format(kind))
+        abort(400, "unknown kind of missed ad `{}`".format(kind))
 
     advertiser_substring = request.args.get("advertiser_substring")
 
     with db_functions.get_google_ads_database_sqlalchemy_session() as session:
         return {
             "result": queries.all_kinds_of_missed_ads(session, page=page, page_size=page_size, kind=kind, advertiser_substring=advertiser_substring)
-        }    
+        }
 
 @google_dashboard_blueprint.route("/missed_ads")
 def missed_ads():

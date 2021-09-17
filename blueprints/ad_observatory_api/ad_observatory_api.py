@@ -458,9 +458,7 @@ def assign_spend_to_timewindows(weeks_list, grouping_name, spend_query_result):
             spend = row['spend']
 
         run_days = spend_end - spend_start
-        run_days = run_days.days + 1
-        if run_days < 1:
-            run_days = 1
+        run_days = max(run_days.days + 1, 1)
 
         spend_per_day = decimal.Decimal(spend / run_days)
         date_list = pd.date_range(start=spend_start, end=spend_end)
