@@ -1,0 +1,102 @@
+{
+  "dynamic": "false",
+  "_routing": {
+    "required": false
+  },
+  "properties": {
+    "id": {
+      "type": "long"
+    },
+    "archive_id": {
+      "type": "long"
+    },
+    "ad_delivery_start_time": {
+      "type": "date",
+      "format": "epoch_second"
+    },
+    "ad_delivery_stop_time": {
+      "type": "date",
+      "format": "epoch_second"
+    },
+    "body": {
+      "type": "text"
+    },
+    "link_url": {
+      "type": "text"
+    },
+    "image_downloaded_url": {
+      "type": "text"
+    },
+    "image_bucket_path": {
+      "type": "text"
+    },
+    "image_sim_hash": {
+      "type": "text"
+    },
+    "image_sha256_hash": {
+      "type": "text"
+    },
+    "link_title": {
+      "type": "text"
+    },
+    "link_description": {
+      "type": "text"
+    },
+    "text_sim_hash": {
+      "type": "text"
+    },
+    "text_sha256_hash": {
+      "type": "text"
+    },
+    "body_language": {
+      "type": "text",
+      "fields": {
+        "keyword": {
+          "type": "keyword",
+          "normalizer": "default2"
+        }
+      }
+    },
+    "link_caption": {
+      "type": "text",
+      "fields": {
+        "keyword": {
+          "type": "keyword",
+          "normalizer": "default2"
+        }
+      }
+    },
+    "funding_entity": {
+      "type": "text",
+      "fields": {
+        "keyword": {
+          "type": "keyword",
+          "normalizer": "default2"
+        },
+        "ngram": {
+          "type": "text",
+          "analyzer": "ngram",
+          "search_analyzer": "lowercase"
+        }
+      }
+    },
+    "page_id": {
+      "type": "long"
+    },
+    "page_name": {
+      "type": "text",
+      "fields": {
+        "keyword": {
+          "type": "keyword",
+          "normalizer": "default2"
+        },
+        "ngram": {
+          "type": "text",
+          "analyzer": "ngram",
+          "search_analyzer": "lowercase"
+        }
+      }
+    }
+  }
+}
+
