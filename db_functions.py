@@ -333,7 +333,7 @@ class AdScreenerDBInterface(UserDatabaseInterface):
             ' and archive_id=%(archive_id)s')
         cursor.execute(delete_ad_query, {'ad_cluster_id': ad_cluster_id, 'archive_id': archive_id})
 
-class AdsIfoDBInterface(BaseDBInterface):
+class FBAdsDBInterface(BaseDBInterface):
     """Interface to Ads Info database."""
 
     def get_page_data(self, page_id):
