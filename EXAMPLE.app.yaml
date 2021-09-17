@@ -21,6 +21,8 @@ env_variables:
   FB_ADS_ELASTIC_SEARCH_FB_PAGES_INDEX_NAME: <PLACEHOLDER>
   # elastic search index name for FB ad creatives data
   FB_ADS_ELASTIC_SEARCH_FB_AD_CREATIVES_INDEX_NAME: <PLACEHOLDER>
+  # Google cloud storage bucket name where FB ad creatives are stored. Can include dir preifx
+  FB_AD_CREATIVE_GCS_BUCKET: <PLACEHOLDER>
   # hostname or IP of database to connect to for Google ads data
   GOOGLE_ADS_DATABASE_HOST: <PLACEHOLDER>
   # Name of database to connect to for Google ads data
