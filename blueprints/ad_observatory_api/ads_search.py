@@ -25,6 +25,11 @@ blueprint = Blueprint('ads_search', __name__)
 
 ArchiveIDAndSimHash = namedtuple('ArchiveIDAndSimHash', ['archive_id', 'sim_hash'])
 
+def load_json_from_path(file_path):
+    with open(file_path) as open_file:
+        return json.load(open_file)
+
+
 FILTER_OPTIONS_DATA_DIR = 'data/'
 REGION_FILTERS_DATA = load_json_from_path(os.path.join(FILTER_OPTIONS_DATA_DIR, 'regions.json'))
 GENDER_FILTERS_DATA = load_json_from_path(os.path.join(FILTER_OPTIONS_DATA_DIR, 'genders.json'))
@@ -67,10 +72,6 @@ LANGUAGE_CODE_TO_NAME_OVERRIDE_MAP = {
     'zh-cn': 'Chinese (Simplified)',
     'zh-tw': 'Chinese (Traditional)'
 }
-
-def load_json_from_path(file_path):
-    with open(file_path) as open_file:
-        return json.load(open_file)
 
 def get_image_dhash_as_int(image_file_stream):
     image_file = io.BytesIO(image_file_stream.read())
