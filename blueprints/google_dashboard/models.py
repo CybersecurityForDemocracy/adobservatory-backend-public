@@ -555,7 +555,6 @@ class LatestUsLifelongAdLibraryReportPage(Base):
      AND             fb_us_ads_2020.ad_library_reports.kind = 'lifelong'
      AND             fb_us_ads_2020.ad_library_reports.loaded = TRUE
      AND             fb_us_ads_2020.ad_library_reports.geography = 'US'
-    
     """
     __tablename__ = "mv_latest_lifelong_us_ad_library_report_pages"
     __table_args__ = {'schema': 'fb_us_ads_2020'}
