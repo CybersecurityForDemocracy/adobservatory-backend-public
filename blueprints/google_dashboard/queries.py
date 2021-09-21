@@ -21,7 +21,7 @@ JOB_THRESHOLD = 0.65
 def js_date_string_to_datetime(date_str):
     # parse a JS datetime string (in approximately ISO format)
     # to a Python datetime, e.g. 2020-08-04T04:00:00.000Z
-    #                            2021-03-03T20:51:06.415Z 
+    #                            2021-03-03T20:51:06.415Z
     return datetime.datetime.fromisoformat(date_str.replace("Z", "+00:00"))
 
 # TODO: needs transformation to use advertiser_name not advertiser_id.
@@ -254,7 +254,7 @@ def zeroes_for_weeks_since_date(most_recent_date, end_date=None):
     data = []
     end_date = (end_date or datetime.date.today()) - datetime.timedelta(days=7)
     while most_recent_date < end_date:
-        most_recent_date += datetime.timedelta(days=7)        
+        most_recent_date += datetime.timedelta(days=7)
         data.append({"spend": 0, "week_start_date": most_recent_date})
     return data
 
@@ -431,7 +431,7 @@ def spend_of_advertiser_by_region(
             (
                 (most_recent_totals_query.c.most_recent_spend_usd
                                 - start_date_totals_query.c.start_date_spend_usd) / (models.RegionPopulation.population.cast(db.Float) / 1000000)
-            ).label("spend_usd_per_1m")            
+            ).label("spend_usd_per_1m")
         )
     )
     query = query.order_by(
@@ -863,7 +863,6 @@ def all_kinds_of_missed_ads(session, kind=None, page=1, page_size=PAGE_SIZE, adv
         search options: advertiser_substring:  add advertiser name filtering to args (substring, so search for "Biden" returns Joe Biden the YouTube uploader, BIDEN FOR PRESIDENT the payer and Amanda Bidenstein the hypothetical rando state auditor candidate)
         TODO: make this a mat view
         TODO: add ads from FB social issue advertisers
-        
     """
     query = all_kinds_of_missed_ads_ids_query(session, kind=kind, advertiser_substring=advertiser_substring)
     page_of_results = list(query.slice((page - 1) * page_size, page * page_size))
@@ -937,8 +936,8 @@ def disappearing_ads_query(session, advertiser_substring=None):
     query = session.query(models.GoogleAdCreative)
     query = query.join(models.CreativeStat)
     query = query.join(models.AdvertiserStat)
-    if advertiser_substring is not None: 
-        query = query.filter(models.AdvertiserStat.advertiser_name.ilike(f'%{advertiser_substring}%'))    
+    if advertiser_substring is not None:
+        query = query.filter(models.AdvertiserStat.advertiser_name.ilike(f'%{advertiser_substring}%'))
     query = query.outerjoin(models.YoutubeVideo)
     query = query.filter(
         models.CreativeStat.report_date
