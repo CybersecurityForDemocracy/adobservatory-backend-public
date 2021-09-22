@@ -354,12 +354,21 @@ def spend_of_advertiser_by_region(
 
     earliest_date_after_start_date = session.query(
         db.func.min(models.AdvertiserRegionalSpend.report_date)
-    ).filter(models.AdvertiserRegionalSpend.report_date >= start_date)
+    ).join(
+        models.AdvertiserStat,
+        models.AdvertiserRegionalSpend.advertiser_id
+        == models.AdvertiserStat.advertiser_id,
+    ).filter(models.AdvertiserRegionalSpend.report_date >= start_date,
+             models.AdvertiserStat.advertiser_name == advertiser_name)
     earliest_date_after_start_date_sq = earliest_date_after_start_date.subquery(
         "earliest_date_after_start_date"
     )
     latest_date_before_end_date = session.query(
         db.func.max(models.AdvertiserRegionalSpend.report_date)
+    ).join(
+        models.AdvertiserStat,
+        models.AdvertiserRegionalSpend.advertiser_id
+        == models.AdvertiserStat.advertiser_id,
     ).filter(models.AdvertiserRegionalSpend.report_date <= end_date)
     latest_date_before_end_date_sq = latest_date_before_end_date.subquery(
         "latest_date_before_end_date"
