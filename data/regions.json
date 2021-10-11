@@ -1,242 +1,242 @@
 [
   {
     "label": "All",
-    "value": "ALL"
+    "value": "All"
   },
   {
     "label": "Alabama",
-    "value": "AL"
+    "value": "Alabama"
   },
   {
     "label": "Alaska",
-    "value": "AK"
+    "value": "Alaska"
   },
   {
     "label": "American Samoa",
-    "value": "AS"
+    "value": "American Samoa"
   },
   {
     "label": "Arizona",
-    "value": "AZ"
+    "value": "Arizona"
   },
   {
     "label": "Arkansas",
-    "value": "AR"
+    "value": "Arkansas"
   },
   {
     "label": "California",
-    "value": "CA"
+    "value": "California"
   },
   {
     "label": "Colorado",
-    "value": "CO"
+    "value": "Colorado"
   },
   {
     "label": "Connecticut",
-    "value": "CT"
+    "value": "Connecticut"
   },
   {
     "label": "Delaware",
-    "value": "DE"
+    "value": "Delaware"
   },
   {
     "label": "District Of Columbia",
-    "value": "DC"
+    "value": "District Of Columbia"
   },
   {
     "label": "Federated States Of Micronesia",
-    "value": "FM"
+    "value": "Federated States Of Micronesia"
   },
   {
     "label": "Florida",
-    "value": "FL"
+    "value": "Florida"
   },
   {
     "label": "Georgia",
-    "value": "GA"
+    "value": "Georgia"
   },
   {
     "label": "Guam",
-    "value": "GU"
+    "value": "Guam"
   },
   {
     "label": "Hawaii",
-    "value": "HI"
+    "value": "Hawaii"
   },
   {
     "label": "Idaho",
-    "value": "ID"
+    "value": "Idaho"
   },
   {
     "label": "Illinois",
-    "value": "IL"
+    "value": "Illinois"
   },
   {
     "label": "Indiana",
-    "value": "IN"
+    "value": "Indiana"
   },
   {
     "label": "Iowa",
-    "value": "IA"
+    "value": "Iowa"
   },
   {
     "label": "Kansas",
-    "value": "KS"
+    "value": "Kansas"
   },
   {
     "label": "Kentucky",
-    "value": "KY"
+    "value": "Kentucky"
   },
   {
     "label": "Louisiana",
-    "value": "LA"
+    "value": "Louisiana"
   },
   {
     "label": "Maine",
-    "value": "ME"
+    "value": "Maine"
   },
   {
     "label": "Marshall Islands",
-    "value": "MH"
+    "value": "Marshall Islands"
   },
   {
     "label": "Maryland",
-    "value": "MD"
+    "value": "Maryland"
   },
   {
     "label": "Massachusetts",
-    "value": "MA"
+    "value": "Massachusetts"
   },
   {
     "label": "Michigan",
-    "value": "MI"
+    "value": "Michigan"
   },
   {
     "label": "Minnesota",
-    "value": "MN"
+    "value": "Minnesota"
   },
   {
     "label": "Mississippi",
-    "value": "MS"
+    "value": "Mississippi"
   },
   {
     "label": "Missouri",
-    "value": "MO"
+    "value": "Missouri"
   },
   {
     "label": "Montana",
-    "value": "MT"
+    "value": "Montana"
   },
   {
     "label": "Nebraska",
-    "value": "NE"
+    "value": "Nebraska"
   },
   {
     "label": "Nevada",
-    "value": "NV"
+    "value": "Nevada"
   },
   {
     "label": "New Hampshire",
-    "value": "NH"
+    "value": "New Hampshire"
   },
   {
     "label": "New Jersey",
-    "value": "NJ"
+    "value": "New Jersey"
   },
   {
     "label": "New Mexico",
-    "value": "NM"
+    "value": "New Mexico"
   },
   {
     "label": "New York",
-    "value": "NY"
+    "value": "New York"
   },
   {
     "label": "North Carolina",
-    "value": "NC"
+    "value": "North Carolina"
   },
   {
     "label": "North Dakota",
-    "value": "ND"
+    "value": "North Dakota"
   },
   {
     "label": "Northern Mariana Islands",
-    "value": "MP"
+    "value": "Northern Mariana Islands"
   },
   {
     "label": "Ohio",
-    "value": "OH"
+    "value": "Ohio"
   },
   {
     "label": "Oklahoma",
-    "value": "OK"
+    "value": "Oklahoma"
   },
   {
     "label": "Oregon",
-    "value": "OR"
+    "value": "Oregon"
   },
   {
     "label": "Palau",
-    "value": "PW"
+    "value": "Palau"
   },
   {
     "label": "Pennsylvania",
-    "value": "PA"
+    "value": "Pennsylvania"
   },
   {
     "label": "Puerto Rico",
-    "value": "PR"
+    "value": "Puerto Rico"
   },
   {
     "label": "Rhode Island",
-    "value": "RI"
+    "value": "Rhode Island"
   },
   {
     "label": "South Carolina",
-    "value": "SC"
+    "value": "South Carolina"
   },
   {
     "label": "South Dakota",
-    "value": "SD"
+    "value": "South Dakota"
   },
   {
     "label": "Tennessee",
-    "value": "TN"
+    "value": "Tennessee"
   },
   {
     "label": "Texas",
-    "value": "TX"
+    "value": "Texas"
   },
   {
     "label": "Utah",
-    "value": "UT"
+    "value": "Utah"
   },
   {
     "label": "Vermont",
-    "value": "VT"
+    "value": "Vermont"
   },
   {
     "label": "Virgin Islands",
-    "value": "VI"
+    "value": "Virgin Islands"
   },
   {
     "label": "Virginia",
-    "value": "VA"
+    "value": "Virginia"
   },
   {
     "label": "Washington",
-    "value": "WA"
+    "value": "Washington"
   },
   {
     "label": "West Virginia",
-    "value": "WV"
+    "value": "West Virginia"
   },
   {
     "label": "Wisconsin",
-    "value": "WI"
+    "value": "Wisconsin"
   },
   {
     "label": "Wyoming",
-    "value": "WY"
+    "value": "Wyoming"
   }
 ]
