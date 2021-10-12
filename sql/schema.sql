@@ -307,10 +307,16 @@ CREATE INDEX ad_cluster_pages_page_id_idx ON ad_cluster_pages USING btree (page_
 CREATE INDEX ad_topics_topic_id ON ad_topics USING btree (topic_id);
 CREATE INDEX ad_topics_archive_id ON ad_topics USING btree (archive_id);
 CREATE INDEX ad_cluster_topics_ad_cluster_id_idx ON ad_cluster_topics USING btree (ad_cluster_id);
+CREATE INDEX ad_cluster_region_impression_results_ad_cluster_id_idx ON ad_cluster_region_impression_results USING btree(ad_cluster_id);
+CREATE INDEX ad_cluster_region_impression_results_region_idx ON ad_cluster_region_impression_results USING btree(region);
+CREATE INDEX ad_cluster_demo_impression_results_ad_cluster_id_idx ON ad_cluster_demo_impression_results USING btree(ad_cluster_id);
+CREATE INDEX ad_cluster_demo_impression_results_age_group_idx ON ad_cluster_demo_impression_results USING btree(age_group);
+CREATE INDEX ad_cluster_demo_impression_results_gender_idx ON ad_cluster_demo_impression_results USING btree(gender);
 CREATE INDEX ads_ads_creation_time_idx ON ads USING btree (ad_creation_time);
 CREATE INDEX ads_ad_delivery_start_time_idx ON ads USING btree (ad_delivery_start_time);
 CREATE INDEX ads_page_id_idx ON ads USING btree (page_id);
 CREATE INDEX impressions_last_active_date_idx ON impressions USING btree(last_active_date);
+CREATE INDEX impressions_spend_estimate_idx ON impressions USING btree(spend_estimate);
 CREATE INDEX region_impression_results_archive_id_idx ON region_impression_results USING btree(archive_id);
 CREATE INDEX region_impression_results_region_idx ON region_impression_results USING btree(region);
 CREATE INDEX ad_creatives_image_sim_hash_idx ON ad_creatives USING btree(image_sim_hash);
@@ -1000,6 +1006,7 @@ CREATE MATERIALIZED VIEW IF NOT EXISTS ad_cluster_languages AS
   SELECT DISTINCT ad_cluster_id, ad_creative_body_language AS language FROM ad_clusters JOIN ad_creatives USING(archive_id);
 
 CREATE INDEX IF NOT EXISTS ad_cluster_languages_language ON ad_cluster_languages USING btree(language);
+CREATE INDEX IF NOT EXISTS ad_cluster_languages_ad_cluster_id ON ad_cluster_languages USING btree(ad_cluster_id);
 
 CREATE MATERIALIZED VIEW IF NOT EXISTS ad_cluster_currencies AS
   SELECT DISTINCT ad_cluster_id, ads.currency AS currency FROM ad_clusters JOIN ads USING(archive_id);
