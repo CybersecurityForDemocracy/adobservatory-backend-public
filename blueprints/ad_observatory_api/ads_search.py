@@ -722,7 +722,7 @@ def get_cluster_details_from_archive_id(archive_id):
     ad_cluster_id = db_interface.get_cluster_id_from_archive_id(archive_id)
     if ad_cluster_id is None:
         abort(404)
-    return redirect(url_for('ad_screener.get_ad_cluster_details', ad_cluster_id=ad_cluster_id))
+    return redirect(url_for('.get_ad_cluster_details', ad_cluster_id=ad_cluster_id))
 
 @blueprint.route('/search/pages_type_ahead')
 def pages_type_ahead():
