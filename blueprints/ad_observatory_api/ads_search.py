@@ -9,7 +9,7 @@ import os.path
 import time
 
 import dhash
-from flask import Blueprint, request, Response, url_for, redirect, abort, current_app
+from flask import Blueprint, request, Response, abort, current_app
 import humanize
 from memoization import cached
 from PIL import Image
@@ -716,13 +716,13 @@ def cached_get_ad_cluster_details(ad_cluster_id):
     return json.dumps(ad_cluster_data)
 
 @blueprint.route('/archive-id/<int:archive_id>/cluster')
-def get_cluster_details_from_archive_id(archive_id):
-    db_connection = db_functions.get_fb_ads_database_connection()
-    db_interface = db_functions.FBAdsDBInterface(db_connection)
-    ad_cluster_id = db_interface.get_cluster_id_from_archive_id(archive_id)
+def get_cluster_id_from_archive_id(archive_id):
+    with db_functions.get_fb_ads_database_connection() as db_connection:
+        db_interface = db_functions.FBAdsDBInterface(db_connection)
+        ad_cluster_id = db_interface.get_cluster_id_from_archive_id(archive_id)
     if ad_cluster_id is None:
         abort(404)
-    return redirect(url_for('.get_ad_cluster_details', ad_cluster_id=ad_cluster_id))
+    return {'cluster_id': ad_cluster_id}
 
 @blueprint.route('/search/pages_type_ahead')
 def pages_type_ahead():
