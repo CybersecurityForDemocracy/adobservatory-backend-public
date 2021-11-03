@@ -6,19 +6,19 @@ import itertools
 from operator import itemgetter
 
 from flask import Blueprint, request, Response, abort
-
+from flask_caching import Cache
 import humanize
-from memoization import cached
 import numpy as np
 import pandas as pd
 import simplejson as json
 
 import db_functions
-from common import date_utils
+from common import date_utils, cache
 
 URL_PREFIX = '/api/v1'
 
 blueprint = Blueprint('ad_observatory_api', __name__)
+# TODO(macpd): add query_string=True to all decorated route handlers
 
 SPEND_ESTIMATE_OLDEST_DATE = datetime.date(year=2020, month=6, day=22)
 TOTAL_SPEND_OLDEST_ALLOWED_DATE = datetime.date(year=2020, month=7, day=1)
@@ -104,7 +104,7 @@ def get_spend_per_day(ad_spend_records):
     spends = ad_spend_records['spend'].astype('float').div(timedeltas)
     return spends.replace([np.inf, -np.inf], 0).fillna(0)
 
-@cached
+@cache.global_cache.memoize()
 def generate_time_periods(max_date, min_date, span_in_days=7):
     """Generate list of datetime.date span_in_days apart [max_date, min_date). Starting at max_date
     and working backwards.
@@ -125,51 +125,45 @@ def generate_time_periods(max_date, min_date, span_in_days=7):
             lambda x: x >= min_date, map(date_n_days_ago, range(0, 365, span_in_days))))
 
 @blueprint.route('/total_spend/by_page/of_region/<region_name>')
+@cache.global_cache.cached(query_string=True, response_filter=cache.cache_if_response_no_server_error,
+              timeout=date_utils.SIX_HOURS_IN_SECONDS)
 def get_top_spenders_for_region(region_name):
     start_date = date_utils.parse_date_arg(request.args.get('start_date', '2020-06-02'),
                           oldest_allowed_date=TOTAL_SPEND_OLDEST_ALLOWED_DATE)
     end_date = parse_end_date_request_arg(request.args.get('end_date', None))
     aggregate_by = get_aggregate_by_request_arg(request.args)
 
-    response_data = cached_get_top_spenders_for_region(region_name, start_date, end_date,
-                                                       aggregate_by)
-    if not response_data:
-        return Response(status=204, mimetype='application/json')
-    return Response(response_data, mimetype='application/json')
-
-@cached(ttl=date_utils.SIX_HOURS_IN_SECONDS)
-def cached_get_top_spenders_for_region(region_name, start_date, end_date, aggregate_by):
     with db_functions.get_fb_ads_database_connection() as db_connection:
         db_interface = db_functions.FBAdsDBInterface(db_connection)
 
         results = db_interface.get_spender_for_region(region_name, start_date, end_date,
                                                       aggregate_by)
-    if results is None:
-        return None
-    return json.dumps({'spenders': results.results,
+    response_data = json.dumps({'spenders': results.results,
                        'region_name': region_name,
                        'start_date': results.start_date.isoformat(),
                        'end_date': results.end_date.isoformat(),
                       })
+    if not response_data:
+        return Response(status=204, mimetype='application/json')
+    return Response(response_data, mimetype='application/json')
 
 @blueprint.route('/pages/<int:page_id>')
+@cache.global_cache.cached(query_string=True, response_filter=cache.cache_if_response_no_server_error,
+              timeout=date_utils.SIX_HOURS_IN_SECONDS)
 def get_page_data(page_id):
-    results = cached_get_page_data(page_id)
-    if results:
-        return results
-    return Response(status=404, mimetype='application/json')
-
-@cached(ttl=date_utils.SIX_HOURS_IN_SECONDS)
-def cached_get_page_data(page_id):
     with db_functions.get_fb_ads_database_connection() as db_connection:
         db_interface = db_functions.FBAdsDBInterface(db_connection)
         page_data = db_interface.get_page_data(page_id)
         if page_data:
             page_data['owned_pages'] = db_interface.owned_pages(page_id)
-            return json.dumps(page_data)
-    return None
+
+    if page_data:
+        return Response(json.dumps(page_data), mimetype='application/json')
+    return Response(status=404, mimetype='application/json')
 
 @blueprint.route('/total_spend/of_page/<int:page_id>/of_region/<region_name>')
+@cache.global_cache.cached(query_string=True, response_filter=cache.cache_if_response_no_server_error,
+              timeout=date_utils.SIX_HOURS_IN_SECONDS)
 def get_total_spending_by_spender_in_region_since_date(page_id, region_name):
     start_date = date_utils.parse_date_arg(request.args.get('start_date', '2020-06-02'),
                                 oldest_allowed_date=TOTAL_SPEND_OLDEST_ALLOWED_DATE)
@@ -177,15 +171,9 @@ def get_total_spending_by_spender_in_region_since_date(page_id, region_name):
     aggregate_by = get_aggregate_by_request_arg(request.args)
     if not start_date:
         abort(400)
-    response_data = cached_total_spending_by_spender_in_region_since_date(
-        page_id, region_name, start_date, end_date, aggregate_by)
-    if not response_data:
-        return Response(status=204, mimetype='application/json')
-    return Response(response_data, mimetype='application/json')
 
-@cached(ttl=date_utils.SIX_HOURS_IN_SECONDS)
-def cached_total_spending_by_spender_in_region_since_date(page_id, region_name, start_date,
-                                                          end_date, aggregate_by):
+    respone_data = None
+
     with db_functions.get_fb_ads_database_connection() as db_connection:
         db_interface = db_functions.FBAdsDBInterface(db_connection)
         page_owner = db_interface.page_owner(page_id)
@@ -193,39 +181,41 @@ def cached_total_spending_by_spender_in_region_since_date(page_id, region_name, 
             page_id, region_name, start_date, end_date, aggregate_by)
         owned_pages = db_interface.owned_pages(page_id)
 
-    if not results:
-        return None
+    if results:
+        page_name = results.results[0]['page_name']
+        # TODO(macpd): remove this once FE uses /pages/<int:page_id> to get owned page IDs
+        results.results[0]['page_ids'] = owned_pages 
+        response_data = json.dumps(
+            {'start_date': results.start_date.isoformat(),
+             'end_date': results.end_date.isoformat(),
+             'page_id': page_id,
+             'page_owner': page_owner,
+             'page_name': page_name,
+             'region_name': region_name,
+             'spenders': results.results})
 
-    page_name = results.results[0]['page_name']
-    # TODO(macpd): remove this once FE uses /pages/<int:page_id> to get owned page IDs
-    results.results[0]['page_ids'] = owned_pages
-
-    return json.dumps(
-        {'start_date': results.start_date.isoformat(),
-         'end_date': results.end_date.isoformat(),
-         'page_id': page_id,
-         'page_owner': page_owner,
-         'page_name': page_name,
-         'region_name': region_name,
-         'spenders': results.results})
+    if not response_data:
+        return Response(status=204, mimetype='application/json')
+    return Response(response_data, mimetype='application/json')
 
 @blueprint.route('/spend_by_time_period/of_page/<int:page_id>/of_region/<region_name>')
-def spending_by_week_by_spender_of_region(page_id, region_name):
+@cache.global_cache.cached(query_string=True, response_filter=cache.cache_if_response_no_server_error,
+              timeout=date_utils.SIX_HOURS_IN_SECONDS)
+def get_spending_by_week_by_spender_of_region(page_id, region_name):
     start_date = date_utils.parse_date_arg(request.args.get('start_date', '2020-06-01'),
                                 oldest_allowed_date=SPEND_ESTIMATE_OLDEST_DATE)
     if not start_date:
         abort(400)
     end_date = parse_end_date_request_arg(request.args.get('end_date', None))
     aggregate_by = get_aggregate_by_request_arg(request.args)
-    response_data = cached_spending_by_week_by_spender_of_region(page_id, region_name,
+    response_data = spending_by_week_by_spender_of_region(page_id, region_name,
                                                                  start_date, end_date, aggregate_by)
     if not response_data:
         return Response(status=204, mimetype='application/json')
     return Response(response_data, mimetype='application/json')
 
-@cached(ttl=date_utils.SIX_HOURS_IN_SECONDS)
-def cached_spending_by_week_by_spender_of_region(page_id, region_name, start_date, end_date,
-                                                 aggregate_by):
+def spending_by_week_by_spender_of_region(page_id, region_name, start_date, end_date,
+                                              aggregate_by):
     with db_functions.get_fb_ads_database_connection() as db_connection:
         db_interface = db_functions.FBAdsDBInterface(db_connection)
         if not end_date:
@@ -291,6 +281,8 @@ def discount_spend_outside_daterange(start_date, end_date, ad_spend_records):
     return ad_spend_records
 
 @blueprint.route('/total_spend/by_page/of_topic/<path:topic_name>/of_region/<region_name>')
+@cache.global_cache.cached(query_string=True, response_filter=cache.cache_if_response_no_server_error,
+              timeout=date_utils.SIX_HOURS_IN_SECONDS)
 def get_spenders_for_topic_in_region(topic_name, region_name):
     record_count = int(request.args.get('count', '10'))
     start_date = date_utils.parse_date_arg(request.args.get('start_date', '2020-06-22'),
@@ -299,15 +291,14 @@ def get_spenders_for_topic_in_region(topic_name, region_name):
         abort(400)
     end_date = parse_end_date_request_arg(request.args.get('end_date', None))
     aggregate_by = get_aggregate_by_request_arg(request.args)
-    response_data = cached_spenders_for_topic_in_region(
+    response_data = spenders_for_topic_in_region(
         topic_name, region_name, start_date, end_date, aggregate_by, max_records=record_count)
     if not response_data:
         return Response(status=204, mimetype='application/json')
     return Response(response_data, mimetype='application/json')
 
-@cached(ttl=date_utils.SIX_HOURS_IN_SECONDS)
-def cached_spenders_for_topic_in_region(topic_name, region_name, start_date, end_date, aggregate_by,
-                                        max_records=None):
+def spenders_for_topic_in_region(topic_name, region_name, start_date, end_date, aggregate_by,
+                                 max_records=None):
     with db_functions.get_fb_ads_database_connection() as db_connection:
         db_interface = db_functions.FBAdsDBInterface(db_connection)
         topics = db_interface.topics()
@@ -336,19 +327,20 @@ def cached_spenders_for_topic_in_region(topic_name, region_name, start_date, end
         'region_name': region_name})
 
 @blueprint.route('/total_spend/by_topic/of_region/<region_name>')
-def top_topics_in_region(region_name):
+@cache.global_cache.cached(query_string=True, response_filter=cache.cache_if_response_no_server_error,
+              timeout=date_utils.SIX_HOURS_IN_SECONDS)
+def get_top_topics_in_region(region_name):
     start_date = date_utils.parse_date_arg(request.args.get('start_date', '2020-06-22'),
                                 oldest_allowed_date=TOTAL_SPEND_OLDEST_ALLOWED_DATE)
     if not start_date:
         abort(400)
     end_date = parse_end_date_request_arg(request.args.get('end_date', None))
-    response_data = top_topic_in_region(region_name, start_date, end_date)
+    response_data = top_topics_in_region(region_name, start_date, end_date)
     if not response_data:
         return Response(status=204, mimetype='application/json')
     return Response(response_data, mimetype='application/json')
 
-@cached(ttl=date_utils.SIX_HOURS_IN_SECONDS)
-def top_topic_in_region(region_name, start_date, end_date, max_records=None):
+def top_topics_in_region(region_name, start_date, end_date, max_records=None):
     with db_functions.get_fb_ads_database_connection() as db_connection:
         db_interface = db_functions.FBAdsDBInterface(db_connection)
         topic_map = db_interface.topic_id_to_name_map()
@@ -374,7 +366,9 @@ def top_topic_in_region(region_name, start_date, end_date, max_records=None):
         'region_name': region_name})
 
 @blueprint.route('/spend_by_time_period/of_topic/<path:topic_name>/of_region/<region_name>')
-def spend_by_week_for_topic(topic_name, region_name):
+@cache.global_cache.cached(query_string=True, response_filter=cache.cache_if_response_no_server_error,
+              timeout=date_utils.SIX_HOURS_IN_SECONDS)
+def get_spend_by_week_for_topic(topic_name, region_name):
     start_date = date_utils.parse_date_arg(request.args.get('start_date', '2020-06-22'),
                                 oldest_allowed_date=SPEND_ESTIMATE_OLDEST_DATE)
     time_period_unit = request.args.get('time_unit', 'week')
@@ -382,16 +376,14 @@ def spend_by_week_for_topic(topic_name, region_name):
     if not start_date or not time_period_length:
         abort(400)
     end_date = parse_end_date_request_arg(request.args.get('end_date', None))
-    response_data = cached_spend_by_week_for_topic(topic_name, region_name, start_date, end_date,
+    response_data = spend_by_week_for_topic(topic_name, region_name, start_date, end_date,
                                                    time_period_unit, time_period_length)
     if not response_data:
         return Response(status=204, mimetype='application/json')
     return Response(response_data, mimetype='application/json')
 
-@cached(ttl=date_utils.SIX_HOURS_IN_SECONDS)
-def cached_spend_by_week_for_topic(topic_name, region_name, start_date, end_date, time_period_unit,
-                                   time_period_length):
-
+def spend_by_week_for_topic(topic_name, region_name, start_date, end_date, time_period_unit,
+                                time_period_length):
     with db_functions.get_fb_ads_database_connection() as db_connection:
         db_interface = db_functions.FBAdsDBInterface(db_connection)
         topics = db_interface.topics()
@@ -491,21 +483,22 @@ def assign_spend_to_timewindows(weeks_list, grouping_name, spend_query_result):
     return result
 
 @blueprint.route('/spend_by_time_period/by_topic/of_page/<int:page_id>')
-def spend_by_time_period_by_topic_of_page(page_id):
+@cache.global_cache.cached(query_string=True, response_filter=cache.cache_if_response_no_server_error,
+              timeout=date_utils.SIX_HOURS_IN_SECONDS)
+def get_spend_by_time_period_by_topic_of_page(page_id):
     start_date = date_utils.parse_date_arg(request.args.get('start_date', '2020-06-23'),
                                 oldest_allowed_date=SPEND_ESTIMATE_OLDEST_DATE)
     if not start_date:
         abort(400)
     end_date = parse_end_date_request_arg(request.args.get('end_date', None))
     aggregate_by = get_aggregate_by_request_arg(request.args)
-    response_data = cached_spend_by_time_period_by_topic_of_page(page_id, start_date, end_date,
+    response_data = spend_by_time_period_by_topic_of_page(page_id, start_date, end_date,
                                                                  aggregate_by)
     if not response_data:
         return Response(status=204, mimetype='application/json')
     return Response(response_data, mimetype='application/json')
 
-@cached(ttl=date_utils.SIX_HOURS_IN_SECONDS)
-def cached_spend_by_time_period_by_topic_of_page(page_id, start_date, end_date, aggregate_by):
+def spend_by_time_period_by_topic_of_page(page_id, start_date, end_date, aggregate_by):
     #TODO(LAE):read this parameter instead of hardcoding when this can be tested
     #time_unit = request.args.get('time_unit', 'week')
     time_unit = 'week'
@@ -533,7 +526,9 @@ def cached_spend_by_time_period_by_topic_of_page(page_id, start_date, end_date, 
          'spend_by_time_period': spend_by_time_period})
 
 @blueprint.route('/spend_by_time_period/by_topic/of_page/<int:page_id>/of_region/<region_name>')
-def spend_by_time_period_by_topic_of_page_in_region(page_id, region_name):
+@cache.global_cache.cached(query_string=True, response_filter=cache.cache_if_response_no_server_error,
+              timeout=date_utils.SIX_HOURS_IN_SECONDS)
+def get_spend_by_time_period_by_topic_of_page_in_region(page_id, region_name):
     start_date = date_utils.parse_date_arg(request.args.get('start_date', '2020-06-23'),
                                 oldest_allowed_date=SPEND_ESTIMATE_OLDEST_DATE)
     end_date = parse_end_date_request_arg(request.args.get('end_date', None))
@@ -541,16 +536,15 @@ def spend_by_time_period_by_topic_of_page_in_region(page_id, region_name):
 
     if not start_date:
         abort(400)
-    response_data = cached_spend_by_time_period_by_topic_of_page_in_region(page_id, region_name,
-                                                                           start_date, end_date,
-                                                                           aggregate_by)
+    response_data = spend_by_time_period_by_topic_of_page_in_region(page_id, region_name,
+                                                                    start_date, end_date,
+                                                                    aggregate_by)
     if not response_data:
         return Response(status=204, mimetype='application/json')
     return Response(response_data, mimetype='application/json')
 
-@cached(ttl=date_utils.SIX_HOURS_IN_SECONDS)
-def cached_spend_by_time_period_by_topic_of_page_in_region(page_id, region_name, start_date,
-                                                           end_date, aggregate_by):
+def spend_by_time_period_by_topic_of_page_in_region(page_id, region_name, start_date, end_date,
+                                                    aggregate_by):
     #TODO(LAE):read this parameter instead of hardcoding when this can be tested
     #time_unit = request.args.get('time_unit', 'week')
     time_unit = 'week'
@@ -585,20 +579,21 @@ def cached_spend_by_time_period_by_topic_of_page_in_region(page_id, region_name,
          'spend_by_time_period': spend_by_time_period})
 
 @blueprint.route('/spend_by_time_period/by_topic/of_region/<region_name>')
-def spend_by_time_period_by_topic_of_region(region_name):
+@cache.global_cache.cached(query_string=True, response_filter=cache.cache_if_response_no_server_error,
+              timeout=date_utils.SIX_HOURS_IN_SECONDS)
+def get_spend_by_time_period_by_topic_of_region(region_name):
     start_date = date_utils.parse_date_arg(request.args.get('start_date', '2020-06-23'),
                                 oldest_allowed_date=SPEND_ESTIMATE_OLDEST_DATE)
     end_date = parse_end_date_request_arg(request.args.get('end_date', None))
 
     if not start_date:
         abort(400)
-    response_data = cached_spend_by_time_period_by_topic_of_region(region_name, start_date, end_date)
+    response_data = spend_by_time_period_by_topic_of_region(region_name, start_date, end_date)
     if not response_data:
         return Response(status=204, mimetype='application/json')
     return Response(response_data, mimetype='application/json')
 
-@cached(ttl=date_utils.SIX_HOURS_IN_SECONDS)
-def cached_spend_by_time_period_by_topic_of_region(region_name, start_date, end_date):
+def spend_by_time_period_by_topic_of_region(region_name, start_date, end_date):
     #TODO(LAE):read this parameter instead of hardcoding when this can be tested
     #time_unit = request.args.get('time_unit', 'week')
     time_unit = 'week'
@@ -625,7 +620,9 @@ def cached_spend_by_time_period_by_topic_of_region(region_name, start_date, end_
          'spend_by_time_period': spend_by_time_period})
 
 @blueprint.route('/total_spend/by_purpose/of_page/<int:page_id>')
-def total_spend_by_purpose_of_page(page_id):
+@cache.global_cache.cached(query_string=True, response_filter=cache.cache_if_response_no_server_error,
+              timeout=date_utils.SIX_HOURS_IN_SECONDS)
+def get_total_spend_by_purpose_of_page(page_id):
     start_date = date_utils.parse_date_arg(request.args.get('start_date', '2020-06-23'),
                                 oldest_allowed_date=TOTAL_SPEND_OLDEST_ALLOWED_DATE)
     end_date = parse_end_date_request_arg(request.args.get('end_date', None))
@@ -633,14 +630,13 @@ def total_spend_by_purpose_of_page(page_id):
 
     if not start_date:
         abort(400)
-    response_data = cached_total_spend_by_purpose_of_page(page_id, start_date, end_date,
+    response_data = total_spend_by_purpose_of_page(page_id, start_date, end_date,
                                                           aggregate_by)
     if not response_data:
         return Response(status=204, mimetype='application/json')
     return Response(response_data, mimetype='application/json')
 
-@cached(ttl=date_utils.SIX_HOURS_IN_SECONDS)
-def cached_total_spend_by_purpose_of_page(page_id, start_date, end_date, aggregate_by):
+def total_spend_by_purpose_of_page(page_id, start_date, end_date, aggregate_by):
     with db_functions.get_fb_ads_database_connection() as db_connection:
         db_interface = db_functions.FBAdsDBInterface(db_connection)
         total_page_spend_by_type = db_interface.total_page_spend_by_type(page_id, start_date,
@@ -658,20 +654,21 @@ def cached_total_spend_by_purpose_of_page(page_id, start_date, end_date, aggrega
          'spend_by_purpose': total_page_spend_by_type})
 
 @blueprint.route('/total_spend/by_purpose/of_region/<region_name>')
-def total_spend_by_purpose_of_region(region_name):
+@cache.global_cache.cached(query_string=True, response_filter=cache.cache_if_response_no_server_error,
+              timeout=date_utils.SIX_HOURS_IN_SECONDS)
+def get_total_spend_by_purpose_of_region(region_name):
     start_date = date_utils.parse_date_arg(request.args.get('start_date', '2020-06-23'),
                                 oldest_allowed_date=TOTAL_SPEND_OLDEST_ALLOWED_DATE)
     end_date = parse_end_date_request_arg(request.args.get('end_date', None))
 
     if not start_date:
         abort(400)
-    response_data = cached_total_spend_by_purpose_of_region(region_name, start_date, end_date)
+    response_data = total_spend_by_purpose_of_region(region_name, start_date, end_date)
     if not response_data:
         return Response(status=204, mimetype='application/json')
     return Response(response_data, mimetype='application/json')
 
-@cached(ttl=date_utils.SIX_HOURS_IN_SECONDS)
-def cached_total_spend_by_purpose_of_region(region_name, start_date, end_date):
+def total_spend_by_purpose_of_region(region_name, start_date, end_date):
     with db_functions.get_fb_ads_database_connection() as db_connection:
         db_interface = db_functions.FBAdsDBInterface(db_connection)
         total_spend_by_type_in_region = db_interface.total_spend_by_type_in_region(
@@ -684,7 +681,9 @@ def cached_total_spend_by_purpose_of_region(region_name, start_date, end_date):
          'spend_by_purpose': total_spend_by_type_in_region})
 
 @blueprint.route('/total_spend/by_purpose/of_page/<int:page_id>/of_region/<region_name>')
-def total_spend_by_purpose_of_page_of_region(page_id, region_name):
+@cache.global_cache.cached(query_string=True, response_filter=cache.cache_if_response_no_server_error,
+              timeout=date_utils.SIX_HOURS_IN_SECONDS)
+def get_total_spend_by_purpose_of_page_of_region(page_id, region_name):
     start_date = date_utils.parse_date_arg(request.args.get('start_date', '2020-06-23'),
                                 oldest_allowed_date=TOTAL_SPEND_OLDEST_ALLOWED_DATE)
     end_date = parse_end_date_request_arg(request.args.get('end_date', None))
@@ -692,14 +691,13 @@ def total_spend_by_purpose_of_page_of_region(page_id, region_name):
 
     if not start_date:
         abort(400)
-    response_data = cached_total_spend_by_purpose_of_page_of_region(
+    response_data = total_spend_by_purpose_of_page_of_region(
         page_id, region_name, start_date, end_date, aggregate_by)
     if not response_data:
         return Response(status=204, mimetype='application/json')
     return Response(response_data, mimetype='application/json')
 
-@cached(ttl=date_utils.SIX_HOURS_IN_SECONDS)
-def cached_total_spend_by_purpose_of_page_of_region(page_id, region_name, start_date, end_date,
+def total_spend_by_purpose_of_page_of_region(page_id, region_name, start_date, end_date,
                                                     aggregate_by):
     with db_functions.get_fb_ads_database_connection() as db_connection:
         db_interface = db_functions.FBAdsDBInterface(db_connection)
@@ -715,9 +713,10 @@ def cached_total_spend_by_purpose_of_page_of_region(page_id, region_name, start_
          'region_name': region_name,
          'spend_by_purpose': total_page_spend_by_type})
 
-@blueprint.route(
-    '/spend_by_time_period/by_purpose/of_page/<int:page_id>/of_region/<region_name>')
-def spend_by_time_period_by_purpose_of_page_in_region(page_id, region_name):
+@blueprint.route('/spend_by_time_period/by_purpose/of_page/<int:page_id>/of_region/<region_name>')
+@cache.global_cache.cached(query_string=True, response_filter=cache.cache_if_response_no_server_error,
+              timeout=date_utils.SIX_HOURS_IN_SECONDS)
+def get_spend_by_time_period_by_purpose_of_page_in_region(page_id, region_name):
     start_date = date_utils.parse_date_arg(request.args.get('start_date', '2020-06-23'),
                                 oldest_allowed_date=SPEND_ESTIMATE_OLDEST_DATE)
     end_date = parse_end_date_request_arg(request.args.get('end_date', None))
@@ -725,15 +724,14 @@ def spend_by_time_period_by_purpose_of_page_in_region(page_id, region_name):
 
     if not start_date:
         abort(400)
-    response_data = cached_spend_by_time_period_by_purpose_of_page_in_region(
+    response_data = spend_by_time_period_by_purpose_of_page_in_region(
         page_id, region_name, start_date, end_date, aggregate_by)
 
     if not response_data:
         return Response(status=204, mimetype='application/json')
     return Response(response_data, mimetype='application/json')
 
-@cached(ttl=date_utils.SIX_HOURS_IN_SECONDS)
-def cached_spend_by_time_period_by_purpose_of_page_in_region(page_id, region_name, start_date,
+def spend_by_time_period_by_purpose_of_page_in_region(page_id, region_name, start_date,
                                                              end_date, aggregate_by):
     #TODO(LAE):read this parameter instead of hardcoding when this can be tested
     #time_unit = request.args.get('time_unit', 'week')
@@ -763,21 +761,22 @@ def cached_spend_by_time_period_by_purpose_of_page_in_region(page_id, region_nam
          'spend_by_time_period': spend_by_time_period})
 
 @blueprint.route('/total_spend/of_page/<int:page_id>/by_region')
-def total_spend_of_page_by_region(page_id):
+@cache.global_cache.cached(query_string=True, response_filter=cache.cache_if_response_no_server_error,
+              timeout=date_utils.SIX_HOURS_IN_SECONDS)
+def get_total_spend_of_page_by_region(page_id):
     start_date = date_utils.parse_date_arg(request.args.get('start_date', '2020-06-23'),
                                 oldest_allowed_date=TOTAL_SPEND_OLDEST_ALLOWED_DATE)
     if not start_date:
         abort(400)
     end_date = parse_end_date_request_arg(request.args.get('end_date', None))
     aggregate_by = get_aggregate_by_request_arg(request.args)
-    response_data = cached_total_spend_of_page_by_region(page_id, start_date, end_date,
+    response_data = total_spend_of_page_by_region(page_id, start_date, end_date,
                                                          aggregate_by)
     if not response_data:
         return Response(status=204, mimetype='application/json')
     return Response(response_data, mimetype='application/json')
 
-@cached(ttl=date_utils.SIX_HOURS_IN_SECONDS)
-def cached_total_spend_of_page_by_region(page_id, start_date, end_date, aggregate_by):
+def total_spend_of_page_by_region(page_id, start_date, end_date, aggregate_by):
     with db_functions.get_fb_ads_database_connection() as db_connection:
         db_interface = db_functions.FBAdsDBInterface(db_connection)
         results = db_interface.page_spend_by_region_since_date(
@@ -815,21 +814,22 @@ def obscure_too_low_count_or_convert_count_to_humanized_int(rows):
 
 
 @blueprint.route('/targeting/of_page/<int:page_id>')
-def targeting_category_counts_for_page(page_id):
+@cache.global_cache.cached(query_string=True, response_filter=cache.cache_if_response_no_server_error,
+              timeout=date_utils.SIX_HOURS_IN_SECONDS)
+def get_targeting_category_counts_for_page(page_id):
     start_date =date_utils. parse_date_arg(request.args.get('start_date', '2020-06-22'),
                                 oldest_allowed_date=TOTAL_SPEND_OLDEST_ALLOWED_DATE)
     if not start_date:
         abort(400)
     end_date = parse_end_date_request_arg(request.args.get('end_date', None))
     aggregate_by = get_aggregate_by_request_arg(request.args)
-    response_data = cached_targeting_category_counts_for_page(page_id, start_date, end_date,
+    response_data = targeting_category_counts_for_page(page_id, start_date, end_date,
                                                               aggregate_by)
     if not response_data:
         return Response(status=204, mimetype='application/json')
     return Response(response_data, mimetype='application/json')
 
-@cached(ttl=date_utils.SIX_HOURS_IN_SECONDS)
-def cached_targeting_category_counts_for_page(page_id, start_date, end_date, aggregate_by):
+def targeting_category_counts_for_page(page_id, start_date, end_date, aggregate_by):
     with db_functions.get_fb_ads_database_connection() as db_connection:
         db_interface = db_functions.FBAdsDBInterface(db_connection)
         targeting_category_count_records = db_interface.get_targeting_category_counts_for_page(
@@ -850,26 +850,24 @@ def cached_targeting_category_counts_for_page(page_id, start_date, end_date, agg
         'page_id': page_id})
 
 @blueprint.route('/race_pages')
+@cache.global_cache.cached(query_string=True, response_filter=cache.cache_if_response_no_server_error,
+              timeout=date_utils.SIX_HOURS_IN_SECONDS)
 def race_pages():
-    return Response(cached_race_pages(), mimetype='application/json')
-
-@cached(ttl=date_utils.SIX_HOURS_IN_SECONDS)
-def cached_race_pages():
     with db_functions.get_fb_ads_database_connection() as db_connection:
         db_interface = db_functions.FBAdsDBInterface(db_connection)
         data = {row['race_id']: row['page_ids'] for row in db_interface.race_pages()}
-        return json.dumps(data)
-
+    return Response(json.dumps(data), mimetype='application/json')
 
 @blueprint.route('/race/<race_id>/candidates')
-def candidates_in_race(race_id):
-    response_data = cached_candidates_in_race(race_id)
+@cache.global_cache.cached(query_string=True, response_filter=cache.cache_if_response_no_server_error,
+              timeout=date_utils.SIX_HOURS_IN_SECONDS)
+def get_candidates_in_race(race_id):
+    response_data = candidates_in_race(race_id)
     if not response_data:
         return Response(status=204, mimetype='application/json')
     return Response(response_data, mimetype='application/json')
 
-@cached(ttl=date_utils.SIX_HOURS_IN_SECONDS)
-def cached_candidates_in_race(race_id):
+def candidates_in_race(race_id):
     data = {'race_id': race_id, 'candidates': []}
     with db_functions.get_fb_ads_database_connection() as db_connection:
         db_interface = db_functions.FBAdsDBInterface(db_connection)
@@ -886,24 +884,21 @@ def cached_candidates_in_race(race_id):
 
 
 @blueprint.route('/races')
+@cache.global_cache.cached(query_string=True, response_filter=cache.cache_if_response_no_server_error,
+              timeout=date_utils.SIX_HOURS_IN_SECONDS)
 def get_races():
-    return Response(cached_get_races(), mimetype='application/json')
-
-@cached
-def cached_get_races():
     with db_functions.get_fb_ads_database_connection() as db_connection:
         db_interface = db_functions.FBAdsDBInterface(db_connection)
-        return json.dumps({row['state']: list(filter(None, row['races']))
+        data = json.dumps({row['state']: list(filter(None, row['races']))
                            for row in db_interface.state_races()})
-
+    return Response(data, mimetype='application/json')
 
 @blueprint.route('/missed_ads')
+@cache.global_cache.cached(query_string=True, response_filter=cache.cache_if_response_no_server_error,
+              timeout=date_utils.SIX_HOURS_IN_SECONDS)
 def get_missed_ads():
-    country = request.args.get('country', None)
-    return Response(cached_get_missed_ads(country), mimetype='application/json')
-
-@cached(ttl=date_utils.SIX_HOURS_IN_SECONDS)
-def cached_get_missed_ads(country='US'):
+    country = request.args.get('country', 'US')
     with db_functions.get_fb_ads_database_connection() as db_connection:
         db_interface = db_functions.FBAdsDBInterface(db_connection)
-        return json.dumps(list(db_interface.missed_ads(country)))
+        data = json.dumps(list(db_interface.missed_ads(country)))
+    return Response(data, mimetype='application/json')

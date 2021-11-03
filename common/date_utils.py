@@ -3,6 +3,7 @@ import logging
 
 SIX_HOURS_IN_SECONDS = datetime.timedelta(hours=6).seconds
 ONE_HOUR_IN_SECONDS = datetime.timedelta(hours=1).seconds
+ONE_DAY_IN_SECONDS = 24 * ONE_HOUR_IN_SECONDS
 
 def parse_date_arg(arg_str, oldest_allowed_date=None, max_days_since_now=None):
     """Parse request arg as date with limits on oldest allowed date or max days since now.

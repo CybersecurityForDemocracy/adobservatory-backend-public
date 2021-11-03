@@ -11,7 +11,6 @@ import time
 import dhash
 from flask import Blueprint, request, Response, abort, current_app
 import humanize
-from memoization import cached
 from PIL import Image
 import pybktree
 import pycountry
@@ -19,9 +18,10 @@ import requests
 import simplejson as json
 
 import db_functions
-from common import elastic_search, date_utils
+from common import elastic_search, date_utils, cache
 
 blueprint = Blueprint('ads_search', __name__)
+# TODO(macpd): add query_string=True and query_filter to all decorated route handlers
 
 ArchiveIDAndSimHash = namedtuple('ArchiveIDAndSimHash', ['archive_id', 'sim_hash'])
 
@@ -73,6 +73,7 @@ LANGUAGE_CODE_TO_NAME_OVERRIDE_MAP = {
     'zh-tw': 'Chinese (Traditional)'
 }
 
+
 def get_image_dhash_as_int(image_file_stream):
     image_file = io.BytesIO(image_file_stream.read())
     image = Image.open(image_file)
@@ -109,7 +110,7 @@ def get_languages_code_to_name():
         language_code_list = db_interface.ad_creative_languages()
     return make_language_code_to_name_map(language_code_list)
 
-@cached
+@cache.global_cache.memoize()
 def make_language_code_to_name_map(language_code_list):
     language_code_to_name = {}
     for language_code in language_code_list:
@@ -135,28 +136,27 @@ def get_language_filter_options():
 
 
 @blueprint.route('/filter-options')
+@cache.global_cache.cached(query_string=True, response_filter=cache.cache_if_response_no_server_error,
+              timeout=date_utils.SIX_HOURS_IN_SECONDS)
 def get_filter_options():
-    return cached_get_filter_options()
-
-@cached(ttl=date_utils.SIX_HOURS_IN_SECONDS)
-def cached_get_filter_options():
     """Options for filtering. Used by FE to populate filter selectors."""
     topics_filter_data = [{'label': key, 'value': str(val)} for key, val in
                           get_topic_id_to_name_map().items()]
-    return {'topics': topics_filter_data,
+    return Response(
+        json.dumps(
+            {'topics': topics_filter_data,
             'regions': REGION_FILTERS_DATA,
             'genders': GENDER_FILTERS_DATA,
             'ageRanges': AGE_RANGE_FILTERS_DATA,
             'orderByOptions': ORDER_BY_FILTERS_DATA,
             'orderDirections': ORDER_DIRECTION_FILTERS_DATA,
-            'languages': get_language_filter_options()}
+            'languages': get_language_filter_options()}),
+        mimetype='application/json')
 
 @blueprint.route('/topics')
+@cache.global_cache.cached(query_string=True, response_filter=cache.cache_if_response_no_server_error,
+              timeout=date_utils.SIX_HOURS_IN_SECONDS)
 def topic_names():
-    return cached_topic_names()
-
-@cached(ttl=date_utils.SIX_HOURS_IN_SECONDS)
-def cached_topic_names():
     return Response(
         json.dumps(list(get_topic_id_to_name_map().keys())), mimetype='application/json')
 
@@ -310,7 +310,7 @@ def get_num_bits_different(archive_id_and_simhash1, archive_id_and_simhash2):
     return dhash.get_num_bits_different(archive_id_and_simhash1.sim_hash,
                                         archive_id_and_simhash2.sim_hash)
 
-@cached(ttl=date_utils.SIX_HOURS_IN_SECONDS)
+@cache.global_cache.memoize(timeout=date_utils.SIX_HOURS_IN_SECONDS)
 def get_image_simhash_bktree():
     with db_functions.get_fb_ads_database_connection() as db_connection:
         db_interface = db_functions.FBAdsDBInterface(db_connection)
@@ -337,7 +337,6 @@ def get_image_simhash_bktree():
     return image_simhash_tree
 
 
-@cached(ttl=date_utils.SIX_HOURS_IN_SECONDS)
 def reverse_image_search(image_file_stream, bit_difference_threshold):
     image_dhash = get_image_dhash_as_int(image_file_stream)
     logging.info(
@@ -360,7 +359,6 @@ def reverse_image_search(image_file_stream, bit_difference_threshold):
                 list(archive_ids), min_date=None, max_date=None, region=None, gender=None,
                 age_group=None, language=None, order_by=None, order_direction=None)
 
-@cached(ttl=date_utils.ONE_HOUR_IN_SECONDS)
 def handle_ad_search(topic_id, min_date, max_date, gender, age_range, region, language,
                              order_by, order_direction, num_requested, offset,
                              full_text_search_query, page_id):
@@ -436,6 +434,8 @@ def handle_ad_search(topic_id, min_date, max_date, gender, age_range, region, la
 
 
 @blueprint.route('/ads', methods=['GET'])
+@cache.global_cache.cached(query_string=True, response_filter=cache.cache_if_response_no_server_error,
+              timeout=date_utils.SIX_HOURS_IN_SECONDS)
 def get_ads():
     topic_id = request.args.get('topic', None)
     min_date = request.args.get('startDate', None)
@@ -460,7 +460,6 @@ def get_ads():
 
     return Response(json.dumps(ret), mimetype='application/json')
 
-@cached(ttl=date_utils.ONE_HOUR_IN_SECONDS)
 def handle_ad_cluster_search(topic_id, min_date, max_date, gender, age_range, region, language,
                              order_by, order_direction, num_requested, offset,
                              full_text_search_query, page_id):
@@ -535,12 +534,10 @@ def handle_ad_cluster_search(topic_id, min_date, max_date, gender, age_range, re
             order_direction=order_direction, limit=num_requested, offset=offset,
             min_topic_percentage_threshold=0.25)
 
-
 @blueprint.route('/ad-clusters', methods=['GET', 'POST'])
+@cache.global_cache.cached(query_string=True, response_filter=cache.cache_if_response_no_server_error,
+              timeout=date_utils.SIX_HOURS_IN_SECONDS)
 def get_ad_clusters():
-    return Response(json.dumps(get_ad_clusters_data(request)), mimetype='application/json')
-
-def get_ad_clusters_data(request):
     if request.method == 'POST':
         if 'reverse_image_search' not in request.files:
             abort(400, description='Client must provide a reverse_image_search file')
@@ -574,7 +571,8 @@ def get_ad_clusters_data(request):
             topic_id, min_date, max_date, gender, age_range, region, language, order_by,
             order_direction, num_requested, offset, full_text_search_query, page_id)
 
-    return [get_ad_cluster_record(row) for row in ad_cluster_data]
+    return Response(json.dumps([get_ad_cluster_record(row) for row in ad_cluster_data]),
+                    mimetype='application/json')
 
 
 def cluster_additional_ads(db_interface, ad_cluster_id):
@@ -598,12 +596,9 @@ def format_advertiser_info(advertiser_info):
     return ret
 
 @blueprint.route('/ads/<int:archive_id>')
+@cache.global_cache.cached(query_string=True, response_filter=cache.cache_if_response_no_server_error,
+              timeout=date_utils.SIX_HOURS_IN_SECONDS)
 def get_ad_details(archive_id):
-    response_data = cached_get_ad_details(archive_id)
-    return Response(response_data, mimetype='application/json')
-
-@cached(ttl=date_utils.SIX_HOURS_IN_SECONDS)
-def cached_get_ad_details(archive_id):
     db_connection = db_functions.get_fb_ads_database_connection()
     db_interface = db_functions.FBAdsDBInterface(db_connection)
 
@@ -650,15 +645,13 @@ def cached_get_ad_details(archive_id):
     language_code_to_name = make_language_code_to_name_map(db_interface.ad_languages(archive_id))
     ad_data['languages'] = [language_code_to_name.get(lang, None) for lang in language_code_to_name]
 
-    return json.dumps(ad_data)
+    return Response(json.dumps(ad_data), mimetype='application/json')
+
 
 @blueprint.route('/ad-clusters/<int:ad_cluster_id>')
+@cache.global_cache.cached(query_string=True, response_filter=cache.cache_if_response_no_server_error,
+              timeout=date_utils.SIX_HOURS_IN_SECONDS)
 def get_ad_cluster_details(ad_cluster_id):
-    response_data = cached_get_ad_cluster_details(ad_cluster_id)
-    return Response(response_data, mimetype='application/json')
-
-@cached(ttl=date_utils.SIX_HOURS_IN_SECONDS)
-def cached_get_ad_cluster_details(ad_cluster_id):
     db_connection = db_functions.get_fb_ads_database_connection()
     db_interface = db_functions.FBAdsDBInterface(db_connection)
 
@@ -713,18 +706,22 @@ def cached_get_ad_cluster_details(ad_cluster_id):
                                     db_interface.ad_cluster_languages(ad_cluster_id)]
     ad_cluster_data['currencies'] = db_interface.ad_cluster_currencies(ad_cluster_id)
 
-    return json.dumps(ad_cluster_data)
+    return Response(json.dumps(ad_cluster_data), mimetype='application/json')
 
 @blueprint.route('/archive-id/<int:archive_id>/cluster')
+@cache.global_cache.cached(query_string=True, response_filter=cache.cache_if_response_no_server_error,
+              timeout=date_utils.SIX_HOURS_IN_SECONDS)
 def get_cluster_id_from_archive_id(archive_id):
     with db_functions.get_fb_ads_database_connection() as db_connection:
         db_interface = db_functions.FBAdsDBInterface(db_connection)
         ad_cluster_id = db_interface.get_cluster_id_from_archive_id(archive_id)
     if ad_cluster_id is None:
         abort(404)
-    return {'cluster_id': ad_cluster_id}
+    return Response(json.dumps({'cluster_id': ad_cluster_id}), mimetype='application/json')
 
 @blueprint.route('/search/pages_type_ahead')
+@cache.global_cache.cached(query_string=True, response_filter=cache.cache_if_response_no_server_error,
+              timeout=date_utils.SIX_HOURS_IN_SECONDS)
 def pages_type_ahead():
     '''
     This endpoint accepts a query parameter (q) and uses that parameter to perform an
@@ -778,6 +775,8 @@ def pages_type_ahead():
     return Response(json.dumps(data), mimetype='application/json')
 
 @blueprint.route("/search/archive_ids")
+@cache.global_cache.cached(query_string=True, response_filter=cache.cache_if_response_no_server_error,
+              timeout=date_utils.SIX_HOURS_IN_SECONDS)
 def get_archive_ids_from_full_text_search():
     '''
     This endpoint returns archive ids that match specific page ids or keywords (matched against the
