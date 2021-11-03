@@ -180,6 +180,9 @@ def get_total_spending_by_spender_in_region_since_date(page_id, region_name):
             page_id, region_name, start_date, end_date, aggregate_by)
         owned_pages = db_interface.owned_pages(page_id)
 
+    if not results:
+        return Response(status=204, mimetype='application/json')
+
     if results:
         page_name = results.results[0]['page_name']
         # TODO(macpd): remove this once FE uses /pages/<int:page_id> to get owned page IDs
@@ -193,8 +196,6 @@ def get_total_spending_by_spender_in_region_since_date(page_id, region_name):
              'region_name': region_name,
              'spenders': results.results})
 
-    if not response_data:
-        return Response(status=204, mimetype='application/json')
     return Response(response_data, mimetype='application/json')
 
 @blueprint.route('/spend_by_time_period/of_page/<int:page_id>/of_region/<region_name>')
