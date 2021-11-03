@@ -2,6 +2,7 @@ certifi
 dhash
 Flask
 Flask-Cors
+Flask-Caching
 gunicorn
 google-api-core
 grpcio
@@ -18,6 +19,7 @@ pycountry
 python-dateutil
 python-dotenv
 records
+redis
 requests
 retrying
 simplejson
