@@ -18,7 +18,6 @@ from common import date_utils, cache
 URL_PREFIX = '/api/v1'
 
 blueprint = Blueprint('ad_observatory_api', __name__)
-# TODO(macpd): add query_string=True to all decorated route handlers
 
 SPEND_ESTIMATE_OLDEST_DATE = datetime.date(year=2020, month=6, day=22)
 TOTAL_SPEND_OLDEST_ALLOWED_DATE = datetime.date(year=2020, month=7, day=1)

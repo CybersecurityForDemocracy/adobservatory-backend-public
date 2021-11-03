@@ -21,7 +21,6 @@ import db_functions
 from common import elastic_search, date_utils, cache
 
 blueprint = Blueprint('ads_search', __name__)
-# TODO(macpd): add query_string=True and query_filter to all decorated route handlers
 
 ArchiveIDAndSimHash = namedtuple('ArchiveIDAndSimHash', ['archive_id', 'sim_hash'])
 
