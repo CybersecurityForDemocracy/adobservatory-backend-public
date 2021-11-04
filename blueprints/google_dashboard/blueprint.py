@@ -13,7 +13,7 @@ from flask.json import JSONEncoder
 from blueprints.google_dashboard import queries
 
 import db_functions
-from common import cache, date_utils
+from common import caching, date_utils
 
 DEFAULT_PAGE_SIZE = "30"
 MAX_PAGE_SIZE = 300
@@ -61,9 +61,9 @@ google_dashboard_blueprint.json_encoder = CustomJSONEncoder
 
 
 @google_dashboard_blueprint.route("/top_political_advertisers/region/<region>")
-@cache.global_cache.cached(
+@caching.global_cache.cached(
     query_string=True,
-    response_filter=cache.cache_if_response_no_server_error,
+    response_filter=caching.cache_if_response_no_server_error,
     timeout=date_utils.ONE_DAY_IN_SECONDS,
 )
 def top_political_advertisers_since_date(region="US"):
@@ -102,9 +102,9 @@ def top_political_advertisers_since_date(region="US"):
 
 
 @google_dashboard_blueprint.route("/top_advertisers")
-@cache.global_cache.cached(
+@caching.global_cache.cached(
     query_string=True,
-    response_filter=cache.cache_if_response_no_server_error,
+    response_filter=caching.cache_if_response_no_server_error,
     timeout=date_utils.ONE_DAY_IN_SECONDS,
 )
 def top_advertisers_since_date():
@@ -130,9 +130,9 @@ flatten = lambda t: [item for sublist in t for item in sublist]
 
 # e.g. http://localhost:5000/advertiser/AR227673879898750976/political_ads for Warnock
 @google_dashboard_blueprint.route("/advertiser/<advertiser_name>/political_ads")
-@cache.global_cache.cached(
+@caching.global_cache.cached(
     query_string=True,
-    response_filter=cache.cache_if_response_no_server_error,
+    response_filter=caching.cache_if_response_no_server_error,
     timeout=date_utils.ONE_DAY_IN_SECONDS,
 )
 def advertiser_ads(advertiser_name):
@@ -171,9 +171,9 @@ def advertiser_ads(advertiser_name):
 
 
 @google_dashboard_blueprint.route("/advertiser/<advertiser_name>/ads_by_same_uploader")
-@cache.global_cache.cached(
+@caching.global_cache.cached(
     query_string=True,
-    response_filter=cache.cache_if_response_no_server_error,
+    response_filter=caching.cache_if_response_no_server_error,
     timeout=date_utils.ONE_DAY_IN_SECONDS,
 )
 def advertiser_ads_by_same_uploader(advertiser_name):
@@ -213,9 +213,9 @@ def advertiser_ads_by_same_uploader(advertiser_name):
 
 
 @google_dashboard_blueprint.route("/advertiser/<advertiser_name>/spend_by_week")
-@cache.global_cache.cached(
+@caching.global_cache.cached(
     query_string=True,
-    response_filter=cache.cache_if_response_no_server_error,
+    response_filter=caching.cache_if_response_no_server_error,
     timeout=date_utils.ONE_DAY_IN_SECONDS,
 )
 def spend_of_advertiser(advertiser_name):
@@ -235,9 +235,9 @@ def spend_of_advertiser(advertiser_name):
 
 
 @google_dashboard_blueprint.route("/advertiser/<advertiser_name>/spend_by_region")
-@cache.global_cache.cached(
+@caching.global_cache.cached(
     query_string=True,
-    response_filter=cache.cache_if_response_no_server_error,
+    response_filter=caching.cache_if_response_no_server_error,
     timeout=date_utils.ONE_DAY_IN_SECONDS,
 )
 def spend_of_advertiser_by_region(advertiser_name):
@@ -257,9 +257,9 @@ def spend_of_advertiser_by_region(advertiser_name):
 
 
 @google_dashboard_blueprint.route("/search")
-@cache.global_cache.cached(
+@caching.global_cache.cached(
     query_string=True,
-    response_filter=cache.cache_if_response_no_server_error,
+    response_filter=caching.cache_if_response_no_server_error,
     timeout=date_utils.ONE_DAY_IN_SECONDS,
 )
 def search():
@@ -339,9 +339,9 @@ def search():
 
 
 @google_dashboard_blueprint.route("/advertiser_name_autocomplete")
-@cache.global_cache.cached(
+@caching.global_cache.cached(
     query_string=True,
-    response_filter=cache.cache_if_response_no_server_error,
+    response_filter=caching.cache_if_response_no_server_error,
     timeout=date_utils.ONE_DAY_IN_SECONDS,
 )
 def autocomplete_advertiser_name():
@@ -373,9 +373,9 @@ def political_ads_in_cbsa():
 
 
 @google_dashboard_blueprint.route("/all_missed_ads")
-@cache.global_cache.cached(
+@caching.global_cache.cached(
     query_string=True,
-    response_filter=cache.cache_if_response_no_server_error,
+    response_filter=caching.cache_if_response_no_server_error,
     timeout=date_utils.ONE_DAY_IN_SECONDS,
 )
 def all_missed_ads():
@@ -405,9 +405,9 @@ def all_missed_ads():
 
 
 @google_dashboard_blueprint.route("/missed_ads")
-@cache.global_cache.cached(
+@caching.global_cache.cached(
     query_string=True,
-    response_filter=cache.cache_if_response_no_server_error,
+    response_filter=caching.cache_if_response_no_server_error,
     timeout=date_utils.ONE_DAY_IN_SECONDS,
 )
 def missed_ads():
@@ -439,9 +439,9 @@ def missed_ads():
 
 
 @google_dashboard_blueprint.route("/disappeared_ads")
-@cache.global_cache.cached(
+@caching.global_cache.cached(
     query_string=True,
-    response_filter=cache.cache_if_response_no_server_error,
+    response_filter=caching.cache_if_response_no_server_error,
     timeout=date_utils.ONE_DAY_IN_SECONDS,
 )
 def disappeared_ads():
@@ -470,9 +470,9 @@ def disappeared_ads():
 
 
 @google_dashboard_blueprint.route("/disappeared_youtube_ads")
-@cache.global_cache.cached(
+@caching.global_cache.cached(
     query_string=True,
-    response_filter=cache.cache_if_response_no_server_error,
+    response_filter=caching.cache_if_response_no_server_error,
     timeout=date_utils.ONE_DAY_IN_SECONDS,
 )
 def disappeared_youtube_ads():
@@ -499,9 +499,9 @@ def disappeared_youtube_ads():
 
 
 @google_dashboard_blueprint.route("/disappeared_ad_counts")
-@cache.global_cache.cached(
+@caching.global_cache.cached(
     query_string=True,
-    response_filter=cache.cache_if_response_no_server_error,
+    response_filter=caching.cache_if_response_no_server_error,
     timeout=date_utils.ONE_DAY_IN_SECONDS,
 )
 def disappeared_ad_counts():
@@ -524,9 +524,9 @@ def disappeared_ad_counts():
 
 
 @google_dashboard_blueprint.route("/violating_ads")
-@cache.global_cache.cached(
+@caching.global_cache.cached(
     query_string=True,
-    response_filter=cache.cache_if_response_no_server_error,
+    response_filter=caching.cache_if_response_no_server_error,
     timeout=date_utils.ONE_DAY_IN_SECONDS,
 )
 def violating_ads():

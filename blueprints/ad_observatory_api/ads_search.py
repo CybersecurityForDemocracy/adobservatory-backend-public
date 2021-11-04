@@ -18,7 +18,7 @@ import requests
 import simplejson as json
 
 import db_functions
-from common import elastic_search, date_utils, cache
+from common import elastic_search, date_utils, caching
 
 blueprint = Blueprint('ads_search', __name__)
 
@@ -109,7 +109,7 @@ def get_languages_code_to_name():
         language_code_list = db_interface.ad_creative_languages()
     return make_language_code_to_name_map(language_code_list)
 
-@cache.global_cache.memoize()
+@caching.global_cache.memoize()
 def make_language_code_to_name_map(language_code_list):
     language_code_to_name = {}
     for language_code in language_code_list:
@@ -135,8 +135,9 @@ def get_language_filter_options():
 
 
 @blueprint.route('/filter-options')
-@cache.global_cache.cached(query_string=True, response_filter=cache.cache_if_response_no_server_error,
-              timeout=date_utils.SIX_HOURS_IN_SECONDS)
+@caching.global_cache.cached(query_string=True,
+                             response_filter=caching.cache_if_response_no_server_error,
+                             timeout=date_utils.SIX_HOURS_IN_SECONDS)
 def get_filter_options():
     """Options for filtering. Used by FE to populate filter selectors."""
     topics_filter_data = [{'label': key, 'value': str(val)} for key, val in
@@ -153,8 +154,9 @@ def get_filter_options():
         mimetype='application/json')
 
 @blueprint.route('/topics')
-@cache.global_cache.cached(query_string=True, response_filter=cache.cache_if_response_no_server_error,
-              timeout=date_utils.SIX_HOURS_IN_SECONDS)
+@caching.global_cache.cached(query_string=True,
+                             response_filter=caching.cache_if_response_no_server_error,
+                             timeout=date_utils.SIX_HOURS_IN_SECONDS)
 def topic_names():
     return Response(
         json.dumps(list(get_topic_id_to_name_map().keys())), mimetype='application/json')
@@ -309,7 +311,7 @@ def get_num_bits_different(archive_id_and_simhash1, archive_id_and_simhash2):
     return dhash.get_num_bits_different(archive_id_and_simhash1.sim_hash,
                                         archive_id_and_simhash2.sim_hash)
 
-@cache.global_cache.memoize(timeout=date_utils.SIX_HOURS_IN_SECONDS)
+@caching.global_cache.memoize(timeout=date_utils.SIX_HOURS_IN_SECONDS)
 def get_image_simhash_bktree():
     with db_functions.get_fb_ads_database_connection() as db_connection:
         db_interface = db_functions.FBAdsDBInterface(db_connection)
@@ -433,8 +435,9 @@ def handle_ad_search(topic_id, min_date, max_date, gender, age_range, region, la
 
 
 @blueprint.route('/ads', methods=['GET'])
-@cache.global_cache.cached(query_string=True, response_filter=cache.cache_if_response_no_server_error,
-              timeout=date_utils.SIX_HOURS_IN_SECONDS)
+@caching.global_cache.cached(query_string=True,
+                             response_filter=caching.cache_if_response_no_server_error,
+                             timeout=date_utils.SIX_HOURS_IN_SECONDS)
 def get_ads():
     topic_id = request.args.get('topic', None)
     min_date = request.args.get('startDate', None)
@@ -534,8 +537,9 @@ def handle_ad_cluster_search(topic_id, min_date, max_date, gender, age_range, re
             min_topic_percentage_threshold=0.25)
 
 @blueprint.route('/ad-clusters', methods=['GET', 'POST'])
-@cache.global_cache.cached(query_string=True, response_filter=cache.cache_if_response_no_server_error,
-              timeout=date_utils.SIX_HOURS_IN_SECONDS)
+@caching.global_cache.cached(query_string=True,
+                             response_filter=caching.cache_if_response_no_server_error,
+                             timeout=date_utils.SIX_HOURS_IN_SECONDS)
 def get_ad_clusters():
     if request.method == 'POST':
         if 'reverse_image_search' not in request.files:
@@ -595,8 +599,9 @@ def format_advertiser_info(advertiser_info):
     return ret
 
 @blueprint.route('/ads/<int:archive_id>')
-@cache.global_cache.cached(query_string=True, response_filter=cache.cache_if_response_no_server_error,
-              timeout=date_utils.SIX_HOURS_IN_SECONDS)
+@caching.global_cache.cached(query_string=True,
+                             response_filter=caching.cache_if_response_no_server_error,
+                             timeout=date_utils.SIX_HOURS_IN_SECONDS)
 def get_ad_details(archive_id):
     db_connection = db_functions.get_fb_ads_database_connection()
     db_interface = db_functions.FBAdsDBInterface(db_connection)
@@ -648,8 +653,9 @@ def get_ad_details(archive_id):
 
 
 @blueprint.route('/ad-clusters/<int:ad_cluster_id>')
-@cache.global_cache.cached(query_string=True, response_filter=cache.cache_if_response_no_server_error,
-              timeout=date_utils.SIX_HOURS_IN_SECONDS)
+@caching.global_cache.cached(query_string=True,
+                             response_filter=caching.cache_if_response_no_server_error,
+                             timeout=date_utils.SIX_HOURS_IN_SECONDS)
 def get_ad_cluster_details(ad_cluster_id):
     db_connection = db_functions.get_fb_ads_database_connection()
     db_interface = db_functions.FBAdsDBInterface(db_connection)
@@ -708,8 +714,9 @@ def get_ad_cluster_details(ad_cluster_id):
     return Response(json.dumps(ad_cluster_data), mimetype='application/json')
 
 @blueprint.route('/archive-id/<int:archive_id>/cluster')
-@cache.global_cache.cached(query_string=True, response_filter=cache.cache_if_response_no_server_error,
-              timeout=date_utils.SIX_HOURS_IN_SECONDS)
+@caching.global_cache.cached(query_string=True,
+                             response_filter=caching.cache_if_response_no_server_error,
+                             timeout=date_utils.SIX_HOURS_IN_SECONDS)
 def get_cluster_id_from_archive_id(archive_id):
     with db_functions.get_fb_ads_database_connection() as db_connection:
         db_interface = db_functions.FBAdsDBInterface(db_connection)
@@ -719,8 +726,9 @@ def get_cluster_id_from_archive_id(archive_id):
     return Response(json.dumps({'cluster_id': ad_cluster_id}), mimetype='application/json')
 
 @blueprint.route('/search/pages_type_ahead')
-@cache.global_cache.cached(query_string=True, response_filter=cache.cache_if_response_no_server_error,
-              timeout=date_utils.SIX_HOURS_IN_SECONDS)
+@caching.global_cache.cached(query_string=True,
+                             response_filter=caching.cache_if_response_no_server_error,
+                             timeout=date_utils.SIX_HOURS_IN_SECONDS)
 def pages_type_ahead():
     '''
     This endpoint accepts a query parameter (q) and uses that parameter to perform an
@@ -774,8 +782,9 @@ def pages_type_ahead():
     return Response(json.dumps(data), mimetype='application/json')
 
 @blueprint.route("/search/archive_ids")
-@cache.global_cache.cached(query_string=True, response_filter=cache.cache_if_response_no_server_error,
-              timeout=date_utils.SIX_HOURS_IN_SECONDS)
+@caching.global_cache.cached(query_string=True,
+                             response_filter=caching.cache_if_response_no_server_error,
+                             timeout=date_utils.SIX_HOURS_IN_SECONDS)
 def get_archive_ids_from_full_text_search():
     '''
     This endpoint returns archive ids that match specific page ids or keywords (matched against the

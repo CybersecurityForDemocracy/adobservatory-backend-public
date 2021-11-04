@@ -12,7 +12,7 @@ import pandas as pd
 import simplejson as json
 
 import db_functions
-from common import date_utils, cache
+from common import date_utils, caching
 
 URL_PREFIX = '/api/v1'
 
@@ -102,7 +102,7 @@ def get_spend_per_day(ad_spend_records):
     spends = ad_spend_records['spend'].astype('float').div(timedeltas)
     return spends.replace([np.inf, -np.inf], 0).fillna(0)
 
-@cache.global_cache.memoize()
+@caching.global_cache.memoize()
 def generate_time_periods(max_date, min_date, span_in_days=7):
     """Generate list of datetime.date span_in_days apart [max_date, min_date). Starting at max_date
     and working backwards.
@@ -123,8 +123,9 @@ def generate_time_periods(max_date, min_date, span_in_days=7):
             lambda x: x >= min_date, map(date_n_days_ago, range(0, 365, span_in_days))))
 
 @blueprint.route('/total_spend/by_page/of_region/<region_name>')
-@cache.global_cache.cached(query_string=True, response_filter=cache.cache_if_response_no_server_error,
-              timeout=date_utils.SIX_HOURS_IN_SECONDS)
+@caching.global_cache.cached(query_string=True,
+                             response_filter=caching.cache_if_response_no_server_error,
+                             timeout=date_utils.SIX_HOURS_IN_SECONDS)
 def get_top_spenders_for_region(region_name):
     start_date = date_utils.parse_date_arg(request.args.get('start_date', '2020-06-02'),
                           oldest_allowed_date=TOTAL_SPEND_OLDEST_ALLOWED_DATE)
@@ -146,8 +147,9 @@ def get_top_spenders_for_region(region_name):
     return Response(response_data, mimetype='application/json')
 
 @blueprint.route('/pages/<int:page_id>')
-@cache.global_cache.cached(query_string=True, response_filter=cache.cache_if_response_no_server_error,
-              timeout=date_utils.SIX_HOURS_IN_SECONDS)
+@caching.global_cache.cached(query_string=True,
+                             response_filter=caching.cache_if_response_no_server_error,
+                             timeout=date_utils.SIX_HOURS_IN_SECONDS)
 def get_page_data(page_id):
     with db_functions.get_fb_ads_database_connection() as db_connection:
         db_interface = db_functions.FBAdsDBInterface(db_connection)
@@ -160,8 +162,9 @@ def get_page_data(page_id):
     return Response(status=404, mimetype='application/json')
 
 @blueprint.route('/total_spend/of_page/<int:page_id>/of_region/<region_name>')
-@cache.global_cache.cached(query_string=True, response_filter=cache.cache_if_response_no_server_error,
-              timeout=date_utils.SIX_HOURS_IN_SECONDS)
+@caching.global_cache.cached(query_string=True,
+                             response_filter=caching.cache_if_response_no_server_error,
+                             timeout=date_utils.SIX_HOURS_IN_SECONDS)
 def get_total_spending_by_spender_in_region_since_date(page_id, region_name):
     start_date = date_utils.parse_date_arg(request.args.get('start_date', '2020-06-02'),
                                 oldest_allowed_date=TOTAL_SPEND_OLDEST_ALLOWED_DATE)
@@ -198,8 +201,9 @@ def get_total_spending_by_spender_in_region_since_date(page_id, region_name):
     return Response(response_data, mimetype='application/json')
 
 @blueprint.route('/spend_by_time_period/of_page/<int:page_id>/of_region/<region_name>')
-@cache.global_cache.cached(query_string=True, response_filter=cache.cache_if_response_no_server_error,
-              timeout=date_utils.SIX_HOURS_IN_SECONDS)
+@caching.global_cache.cached(query_string=True,
+                             response_filter=caching.cache_if_response_no_server_error,
+                             timeout=date_utils.SIX_HOURS_IN_SECONDS)
 def get_spending_by_week_by_spender_of_region(page_id, region_name):
     start_date = date_utils.parse_date_arg(request.args.get('start_date', '2020-06-01'),
                                 oldest_allowed_date=SPEND_ESTIMATE_OLDEST_DATE)
@@ -280,8 +284,9 @@ def discount_spend_outside_daterange(start_date, end_date, ad_spend_records):
     return ad_spend_records
 
 @blueprint.route('/total_spend/by_page/of_topic/<path:topic_name>/of_region/<region_name>')
-@cache.global_cache.cached(query_string=True, response_filter=cache.cache_if_response_no_server_error,
-              timeout=date_utils.SIX_HOURS_IN_SECONDS)
+@caching.global_cache.cached(query_string=True,
+                             response_filter=caching.cache_if_response_no_server_error,
+                             timeout=date_utils.SIX_HOURS_IN_SECONDS)
 def get_spenders_for_topic_in_region(topic_name, region_name):
     record_count = int(request.args.get('count', '10'))
     start_date = date_utils.parse_date_arg(request.args.get('start_date', '2020-06-22'),
@@ -326,8 +331,9 @@ def spenders_for_topic_in_region(topic_name, region_name, start_date, end_date, 
         'region_name': region_name})
 
 @blueprint.route('/total_spend/by_topic/of_region/<region_name>')
-@cache.global_cache.cached(query_string=True, response_filter=cache.cache_if_response_no_server_error,
-              timeout=date_utils.SIX_HOURS_IN_SECONDS)
+@caching.global_cache.cached(query_string=True,
+                             response_filter=caching.cache_if_response_no_server_error,
+                             timeout=date_utils.SIX_HOURS_IN_SECONDS)
 def get_top_topics_in_region(region_name):
     start_date = date_utils.parse_date_arg(request.args.get('start_date', '2020-06-22'),
                                 oldest_allowed_date=TOTAL_SPEND_OLDEST_ALLOWED_DATE)
@@ -365,8 +371,9 @@ def top_topics_in_region(region_name, start_date, end_date, max_records=None):
         'region_name': region_name})
 
 @blueprint.route('/spend_by_time_period/of_topic/<path:topic_name>/of_region/<region_name>')
-@cache.global_cache.cached(query_string=True, response_filter=cache.cache_if_response_no_server_error,
-              timeout=date_utils.SIX_HOURS_IN_SECONDS)
+@caching.global_cache.cached(query_string=True,
+                             response_filter=caching.cache_if_response_no_server_error,
+                             timeout=date_utils.SIX_HOURS_IN_SECONDS)
 def get_spend_by_week_for_topic(topic_name, region_name):
     start_date = date_utils.parse_date_arg(request.args.get('start_date', '2020-06-22'),
                                 oldest_allowed_date=SPEND_ESTIMATE_OLDEST_DATE)
@@ -482,8 +489,9 @@ def assign_spend_to_timewindows(weeks_list, grouping_name, spend_query_result):
     return result
 
 @blueprint.route('/spend_by_time_period/by_topic/of_page/<int:page_id>')
-@cache.global_cache.cached(query_string=True, response_filter=cache.cache_if_response_no_server_error,
-              timeout=date_utils.SIX_HOURS_IN_SECONDS)
+@caching.global_cache.cached(query_string=True,
+                             response_filter=caching.cache_if_response_no_server_error,
+                             timeout=date_utils.SIX_HOURS_IN_SECONDS)
 def get_spend_by_time_period_by_topic_of_page(page_id):
     start_date = date_utils.parse_date_arg(request.args.get('start_date', '2020-06-23'),
                                 oldest_allowed_date=SPEND_ESTIMATE_OLDEST_DATE)
@@ -525,8 +533,9 @@ def spend_by_time_period_by_topic_of_page(page_id, start_date, end_date, aggrega
          'spend_by_time_period': spend_by_time_period})
 
 @blueprint.route('/spend_by_time_period/by_topic/of_page/<int:page_id>/of_region/<region_name>')
-@cache.global_cache.cached(query_string=True, response_filter=cache.cache_if_response_no_server_error,
-              timeout=date_utils.SIX_HOURS_IN_SECONDS)
+@caching.global_cache.cached(query_string=True,
+                             response_filter=caching.cache_if_response_no_server_error,
+                             timeout=date_utils.SIX_HOURS_IN_SECONDS)
 def get_spend_by_time_period_by_topic_of_page_in_region(page_id, region_name):
     start_date = date_utils.parse_date_arg(request.args.get('start_date', '2020-06-23'),
                                 oldest_allowed_date=SPEND_ESTIMATE_OLDEST_DATE)
@@ -578,8 +587,9 @@ def spend_by_time_period_by_topic_of_page_in_region(page_id, region_name, start_
          'spend_by_time_period': spend_by_time_period})
 
 @blueprint.route('/spend_by_time_period/by_topic/of_region/<region_name>')
-@cache.global_cache.cached(query_string=True, response_filter=cache.cache_if_response_no_server_error,
-              timeout=date_utils.SIX_HOURS_IN_SECONDS)
+@caching.global_cache.cached(query_string=True,
+                             response_filter=caching.cache_if_response_no_server_error,
+                             timeout=date_utils.SIX_HOURS_IN_SECONDS)
 def get_spend_by_time_period_by_topic_of_region(region_name):
     start_date = date_utils.parse_date_arg(request.args.get('start_date', '2020-06-23'),
                                 oldest_allowed_date=SPEND_ESTIMATE_OLDEST_DATE)
@@ -619,8 +629,9 @@ def spend_by_time_period_by_topic_of_region(region_name, start_date, end_date):
          'spend_by_time_period': spend_by_time_period})
 
 @blueprint.route('/total_spend/by_purpose/of_page/<int:page_id>')
-@cache.global_cache.cached(query_string=True, response_filter=cache.cache_if_response_no_server_error,
-              timeout=date_utils.SIX_HOURS_IN_SECONDS)
+@caching.global_cache.cached(query_string=True,
+                             response_filter=caching.cache_if_response_no_server_error,
+                             timeout=date_utils.SIX_HOURS_IN_SECONDS)
 def get_total_spend_by_purpose_of_page(page_id):
     start_date = date_utils.parse_date_arg(request.args.get('start_date', '2020-06-23'),
                                 oldest_allowed_date=TOTAL_SPEND_OLDEST_ALLOWED_DATE)
@@ -653,8 +664,9 @@ def total_spend_by_purpose_of_page(page_id, start_date, end_date, aggregate_by):
          'spend_by_purpose': total_page_spend_by_type})
 
 @blueprint.route('/total_spend/by_purpose/of_region/<region_name>')
-@cache.global_cache.cached(query_string=True, response_filter=cache.cache_if_response_no_server_error,
-              timeout=date_utils.SIX_HOURS_IN_SECONDS)
+@caching.global_cache.cached(query_string=True,
+                             response_filter=caching.cache_if_response_no_server_error,
+                             timeout=date_utils.SIX_HOURS_IN_SECONDS)
 def get_total_spend_by_purpose_of_region(region_name):
     start_date = date_utils.parse_date_arg(request.args.get('start_date', '2020-06-23'),
                                 oldest_allowed_date=TOTAL_SPEND_OLDEST_ALLOWED_DATE)
@@ -680,8 +692,9 @@ def total_spend_by_purpose_of_region(region_name, start_date, end_date):
          'spend_by_purpose': total_spend_by_type_in_region})
 
 @blueprint.route('/total_spend/by_purpose/of_page/<int:page_id>/of_region/<region_name>')
-@cache.global_cache.cached(query_string=True, response_filter=cache.cache_if_response_no_server_error,
-              timeout=date_utils.SIX_HOURS_IN_SECONDS)
+@caching.global_cache.cached(query_string=True,
+                             response_filter=caching.cache_if_response_no_server_error,
+                             timeout=date_utils.SIX_HOURS_IN_SECONDS)
 def get_total_spend_by_purpose_of_page_of_region(page_id, region_name):
     start_date = date_utils.parse_date_arg(request.args.get('start_date', '2020-06-23'),
                                 oldest_allowed_date=TOTAL_SPEND_OLDEST_ALLOWED_DATE)
@@ -713,8 +726,9 @@ def total_spend_by_purpose_of_page_of_region(page_id, region_name, start_date, e
          'spend_by_purpose': total_page_spend_by_type})
 
 @blueprint.route('/spend_by_time_period/by_purpose/of_page/<int:page_id>/of_region/<region_name>')
-@cache.global_cache.cached(query_string=True, response_filter=cache.cache_if_response_no_server_error,
-              timeout=date_utils.SIX_HOURS_IN_SECONDS)
+@caching.global_cache.cached(query_string=True,
+                             response_filter=caching.cache_if_response_no_server_error,
+                             timeout=date_utils.SIX_HOURS_IN_SECONDS)
 def get_spend_by_time_period_by_purpose_of_page_in_region(page_id, region_name):
     start_date = date_utils.parse_date_arg(request.args.get('start_date', '2020-06-23'),
                                 oldest_allowed_date=SPEND_ESTIMATE_OLDEST_DATE)
@@ -760,8 +774,9 @@ def spend_by_time_period_by_purpose_of_page_in_region(page_id, region_name, star
          'spend_by_time_period': spend_by_time_period})
 
 @blueprint.route('/total_spend/of_page/<int:page_id>/by_region')
-@cache.global_cache.cached(query_string=True, response_filter=cache.cache_if_response_no_server_error,
-              timeout=date_utils.SIX_HOURS_IN_SECONDS)
+@caching.global_cache.cached(query_string=True,
+                             response_filter=caching.cache_if_response_no_server_error,
+                             timeout=date_utils.SIX_HOURS_IN_SECONDS)
 def get_total_spend_of_page_by_region(page_id):
     start_date = date_utils.parse_date_arg(request.args.get('start_date', '2020-06-23'),
                                 oldest_allowed_date=TOTAL_SPEND_OLDEST_ALLOWED_DATE)
@@ -813,8 +828,9 @@ def obscure_too_low_count_or_convert_count_to_humanized_int(rows):
 
 
 @blueprint.route('/targeting/of_page/<int:page_id>')
-@cache.global_cache.cached(query_string=True, response_filter=cache.cache_if_response_no_server_error,
-              timeout=date_utils.SIX_HOURS_IN_SECONDS)
+@caching.global_cache.cached(query_string=True,
+                             response_filter=caching.cache_if_response_no_server_error,
+                             timeout=date_utils.SIX_HOURS_IN_SECONDS)
 def get_targeting_category_counts_for_page(page_id):
     start_date =date_utils. parse_date_arg(request.args.get('start_date', '2020-06-22'),
                                 oldest_allowed_date=TOTAL_SPEND_OLDEST_ALLOWED_DATE)
@@ -849,8 +865,9 @@ def targeting_category_counts_for_page(page_id, start_date, end_date, aggregate_
         'page_id': page_id})
 
 @blueprint.route('/race_pages')
-@cache.global_cache.cached(query_string=True, response_filter=cache.cache_if_response_no_server_error,
-              timeout=date_utils.SIX_HOURS_IN_SECONDS)
+@caching.global_cache.cached(query_string=True,
+                             response_filter=caching.cache_if_response_no_server_error,
+                             timeout=date_utils.SIX_HOURS_IN_SECONDS)
 def race_pages():
     with db_functions.get_fb_ads_database_connection() as db_connection:
         db_interface = db_functions.FBAdsDBInterface(db_connection)
@@ -858,8 +875,9 @@ def race_pages():
     return Response(json.dumps(data), mimetype='application/json')
 
 @blueprint.route('/race/<race_id>/candidates')
-@cache.global_cache.cached(query_string=True, response_filter=cache.cache_if_response_no_server_error,
-              timeout=date_utils.SIX_HOURS_IN_SECONDS)
+@caching.global_cache.cached(query_string=True,
+                             response_filter=caching.cache_if_response_no_server_error,
+                             timeout=date_utils.SIX_HOURS_IN_SECONDS)
 def get_candidates_in_race(race_id):
     response_data = candidates_in_race(race_id)
     if not response_data:
@@ -883,8 +901,9 @@ def candidates_in_race(race_id):
 
 
 @blueprint.route('/races')
-@cache.global_cache.cached(query_string=True, response_filter=cache.cache_if_response_no_server_error,
-              timeout=date_utils.SIX_HOURS_IN_SECONDS)
+@caching.global_cache.cached(query_string=True,
+                             response_filter=caching.cache_if_response_no_server_error,
+                             timeout=date_utils.SIX_HOURS_IN_SECONDS)
 def get_races():
     with db_functions.get_fb_ads_database_connection() as db_connection:
         db_interface = db_functions.FBAdsDBInterface(db_connection)
@@ -893,8 +912,9 @@ def get_races():
     return Response(data, mimetype='application/json')
 
 @blueprint.route('/missed_ads')
-@cache.global_cache.cached(query_string=True, response_filter=cache.cache_if_response_no_server_error,
-              timeout=date_utils.SIX_HOURS_IN_SECONDS)
+@caching.global_cache.cached(query_string=True,
+                             response_filter=caching.cache_if_response_no_server_error,
+                             timeout=date_utils.SIX_HOURS_IN_SECONDS)
 def get_missed_ads():
     country = request.args.get('country', 'US')
     with db_functions.get_fb_ads_database_connection() as db_connection:

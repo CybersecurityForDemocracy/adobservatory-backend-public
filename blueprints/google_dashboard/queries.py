@@ -5,7 +5,7 @@ import sqlalchemy as db
 from sqlalchemy.dialects import postgresql
 
 from blueprints.google_dashboard import models
-from common import cache
+from common import caching
 
 
 ONE_HOUR_IN_SECONDS = datetime.timedelta(hours=1).total_seconds()
@@ -498,7 +498,7 @@ def spend_of_advertiser_id_by_region(
     }
 
 
-@cache.global_cache.memoize(timeout=ONE_DAY_IN_SECONDS, args_to_ignore=["session"])
+@caching.global_cache.memoize(timeout=ONE_DAY_IN_SECONDS, args_to_ignore=["session"])
 def search_political_ads(
     session,
     querystring=None,
@@ -566,7 +566,7 @@ def search_political_ads(
     return list(query.slice((page - 1) * page_size, page * page_size))
 
 
-@cache.global_cache.memoize(timeout=ONE_DAY_IN_SECONDS, args_to_ignore=["session"])
+@caching.global_cache.memoize(timeout=ONE_DAY_IN_SECONDS, args_to_ignore=["session"])
 def search_observed_video_ads(
     session,
     querystring=None,
@@ -780,7 +780,7 @@ def all_kinds_of_missed_ads_ids_query(session, kind=None, advertiser_substring=N
     return query
 
 
-@cache.global_cache.memoize(timeout=ONE_DAY_IN_SECONDS, args_to_ignore=["session"])
+@caching.global_cache.memoize(timeout=ONE_DAY_IN_SECONDS, args_to_ignore=["session"])
 def disappearing_ads_query(session, advertiser_substring=None):
     """
     factoring out the query for disappearing_ads(), disappearing_ads_counts() to avoid repetition. (see docs for those methods)
@@ -987,7 +987,7 @@ def jobby_seeming_ads(session, page=1, page_size=PAGE_SIZE, threshold=JOB_THRESH
     return list(query.slice((page - 1) * page_size, page * page_size))
 
 
-@cache.global_cache.memoize(timeout=ONE_DAY_IN_SECONDS, args_to_ignore=["session"])
+@caching.global_cache.memoize(timeout=ONE_DAY_IN_SECONDS, args_to_ignore=["session"])
 def violating_ads_query(session, include_advertiser_name=False, advertiser_name=None, advertiser_substring=None):
     """
         params:

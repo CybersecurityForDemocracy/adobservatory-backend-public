@@ -17,7 +17,7 @@ from google.cloud.logging_v2.handlers.handlers import EXCLUDED_LOGGER_DEFAULTS
 from blueprints.ad_observatory_api import ad_observatory_api, ads_search
 from blueprints.google_dashboard import blueprint as google_dashboard
 from common.elastic_search import ElasticSearchApiParams
-from common import date_utils, cache
+from common import date_utils, caching
 
 
 def running_on_app_engine():
@@ -57,7 +57,7 @@ def init_cache(server):
         else:
             cache_config['CACHE_OPTIONS'] = {'ssl': True, 'ssl_cert_reqs': None}
     logging.info('Cache config: %s', cache_config)
-    cache.global_cache.init_app(server, cache_config)
+    caching.global_cache.init_app(server, cache_config)
 
 
 def init_server():
