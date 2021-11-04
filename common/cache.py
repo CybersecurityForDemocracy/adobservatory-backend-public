@@ -9,8 +9,7 @@ def cache_if_response_no_server_error(resp):
     logging.debug('cache_if_response_no_server_error: %r, type: %s, status_code: %s', resp,
                   type(resp), resp.status_code)
     if not hasattr(resp, 'status_code'):
-        logging.warn('cached handler return value does not have |status_code| attribute. Make sure '
+        logging.warning('cached handler return value does not have |status_code| attribute. Make sure '
                      'to add one. %r', resp)
         return True
     return resp.status_code >= 200 and resp.status_code < 500
-
