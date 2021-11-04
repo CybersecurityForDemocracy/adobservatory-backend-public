@@ -3,10 +3,9 @@ import logging
 
 import sqlalchemy as db
 from sqlalchemy.dialects import postgresql
-from memoization import cached
-import memoization.caching.general.keys_order_independent as keys_toolkit_order_independent
 
 from blueprints.google_dashboard import models
+from common import cache
 
 
 ONE_HOUR_IN_SECONDS = datetime.timedelta(hours=1).total_seconds()
@@ -18,34 +17,18 @@ row2dict = lambda r: {c.name: str(getattr(r, c.name)) for c in r.__table__.colum
 POLITICAL_THRESHOLD = 0.65
 JOB_THRESHOLD = 0.65
 
+
 def js_date_string_to_datetime(date_str):
     # parse a JS datetime string (in approximately ISO format)
     # to a Python datetime, e.g. 2020-08-04T04:00:00.000Z
     #                            2021-03-03T20:51:06.415Z
     return datetime.datetime.fromisoformat(date_str.replace("Z", "+00:00"))
 
+
 # TODO: needs transformation to use advertiser_name not advertiser_id.
 # top_political_advertisers_since_date
 
 
-def top_political_advertisers_since_date_cache_key_maker(
-    session,
-    start_date=datetime.date(1900, 1, 1),
-    end_date=datetime.date.today(),
-    region=None,
-    page=1,
-    page_size=PAGE_SIZE,
-):
-    """ignore the session in caching"""
-    return keys_toolkit_order_independent.make_key(
-        [start_date, end_date, region, page], []
-    )
-
-
-@cached(
-    ttl=ONE_DAY_IN_SECONDS,
-    custom_key_maker=top_political_advertisers_since_date_cache_key_maker,
-)
 def top_political_advertisers_since_date(
     session,
     start_date=datetime.date(1900, 1, 1),
@@ -193,16 +176,6 @@ def top_political_advertisers_since_date(
     )
 
 
-def top_ad_uploaders_since_date_cache_key_maker(
-    session, start_date=None, end_date=None, page=1, page_size=PAGE_SIZE
-):
-    """ignore the session in caching"""
-    return keys_toolkit_order_independent.make_key([start_date, end_date, page], [])
-
-
-@cached(
-    ttl=ONE_DAY_IN_SECONDS, custom_key_maker=top_ad_uploaders_since_date_cache_key_maker
-)
 def top_ad_uploaders_since_date(
     session, start_date=None, end_date=None, page=1, page_size=PAGE_SIZE
 ):
@@ -234,15 +207,6 @@ def top_ad_uploaders_since_date(
     return list(query.slice((page - 1) * page_size, page * page_size))
 
 
-def spend_of_advertiser_by_week_cache_key_maker(
-    session, advertiser_name, start_date=None, end_date=None
-):
-    """ignore the session in caching"""
-    return keys_toolkit_order_independent.make_key(
-        [advertiser_name, start_date, end_date], []
-    )
-
-
 def zeroes_for_weeks_since_date(most_recent_date, end_date=None):
     """
         for weeks where nothing was spent, the database does not record a row
@@ -258,13 +222,11 @@ def zeroes_for_weeks_since_date(most_recent_date, end_date=None):
         data.append({"spend": 0, "week_start_date": most_recent_date})
     return data
 
-@cached(
-    ttl=ONE_DAY_IN_SECONDS, custom_key_maker=spend_of_advertiser_by_week_cache_key_maker
-)
+
 def spend_of_advertiser_by_week(
     session, advertiser_name, start_date=None, end_date=None
 ):
-    start_date =  js_date_string_to_datetime(start_date) or datetime.date(1900, 1, 1)
+    start_date = js_date_string_to_datetime(start_date) or datetime.date(1900, 1, 1)
     end_date = js_date_string_to_datetime(end_date) or datetime.date.today()
     query = session.query(
         db.func.sum(models.AdvertiserWeeklySpend.spend_usd).label("spend"),
@@ -277,11 +239,11 @@ def spend_of_advertiser_by_week(
     query = query.filter(models.AdvertiserWeeklySpend.week_start_date <= end_date)
     query = query.group_by(models.AdvertiserWeeklySpend.week_start_date)
     query = query.order_by(models.AdvertiserWeeklySpend.week_start_date)
-    logging.info('spend_of_advertiser_by_week query: %s\n%s',
+    logging.info("spend_of_advertiser_by_week query: %s\n%s",
                  query.statement.compile(dialect=postgresql.dialect()), query.statement.compile().params)
 
     res = query.all()
-    spend_by_week =  [{"spend": row[0], "week_start_date": row[1]} for row in res]
+    spend_by_week = [{"spend": row[0], "week_start_date": row[1]} for row in res]
     zeroes_for_missing_dates = zeroes_for_weeks_since_date(max([row["week_start_date"] for row in spend_by_week]), end_date.date()) if len(spend_by_week) else []
     return {
         "total_spend": sum(row.spend for row in res),
@@ -292,26 +254,13 @@ def spend_of_advertiser_by_week(
     }
 
 
-def spend_of_advertiser_id_by_week_cache_key_maker(
-    session, advertiser_id, start_date=None, end_date=None
-):
-    """ignore the session in caching"""
-    return keys_toolkit_order_independent.make_key(
-        [advertiser_id, start_date, end_date], []
-    )
-
-
-@cached(
-    ttl=ONE_DAY_IN_SECONDS,
-    custom_key_maker=spend_of_advertiser_id_by_week_cache_key_maker,
-)
 def spend_of_advertiser_id_by_week(
     session, advertiser_id, start_date=None, end_date=None
 ):
     """
     this is distinct from spend_of_advertiser_by_week because it takes an advertiser_id (one advertiser may have two advertiser_ids.)
     """
-    start_date =  js_date_string_to_datetime(start_date) or datetime.date(1900, 1, 1)
+    start_date = js_date_string_to_datetime(start_date) or datetime.date(1900, 1, 1)
     end_date = js_date_string_to_datetime(end_date) or datetime.date.today()
 
     query = session.query(models.AdvertiserWeeklySpend)
@@ -330,26 +279,13 @@ def spend_of_advertiser_id_by_week(
     }
 
 
-def spend_of_advertiser_by_region_cache_key_maker(
-    session, advertiser_name, start_date=None, end_date=None
-):
-    """ignore the session in caching"""
-    return keys_toolkit_order_independent.make_key(
-        [advertiser_name, start_date, end_date], []
-    )
-
-
-@cached(
-    ttl=ONE_DAY_IN_SECONDS,
-    custom_key_maker=spend_of_advertiser_by_region_cache_key_maker,
-)
 def spend_of_advertiser_by_region(
     session, advertiser_name, start_date=None, end_date=None
 ):
     """
     gets the total regional spend nearest to start_date and nearest to end_date, then subtracts the former from the latter.
     """
-    start_date =  js_date_string_to_datetime(start_date) or datetime.date(1900, 1, 1)
+    start_date = js_date_string_to_datetime(start_date) or datetime.date(1900, 1, 1)
     end_date = js_date_string_to_datetime(end_date) or datetime.date.today()
 
     earliest_date_after_start_date = session.query(
@@ -457,11 +393,11 @@ def spend_of_advertiser_by_region(
     effective_start_date = earliest_date_after_start_date.one()[0]
     effective_end_date = latest_date_before_end_date.one()[0]
 
-    logging.info('spend_of_advertiser_by_region query: %s\n%s',
+    logging.info("spend_of_advertiser_by_region query: %s\n%s",
                  query.statement.compile(dialect=postgresql.dialect()), query.statement.compile().params)
     spend_by_region = []
     for row in query.all():
-        spend_by_region.append({"spend": row[9], "region": row[0], "spend_per_1m": int(row[10]) })
+        spend_by_region.append({"spend": row[9], "region": row[0], "spend_per_1m": int(row[10])})
 
     return {
         "spend_by_region": spend_by_region,
@@ -471,26 +407,13 @@ def spend_of_advertiser_by_region(
     }
 
 
-def spend_of_advertiser_id_by_region_cache_key_maker(
-    session, advertiser_id, start_date=None, end_date=None
-):
-    """ignore the session in caching"""
-    return keys_toolkit_order_independent.make_key(
-        [advertiser_id, start_date, end_date], []
-    )
-
-
-@cached(
-    ttl=ONE_DAY_IN_SECONDS,
-    custom_key_maker=spend_of_advertiser_id_by_region_cache_key_maker,
-)
 def spend_of_advertiser_id_by_region(
     session, advertiser_id, start_date=None, end_date=None
 ):
     """
     this is distinct from spend_of_advertiser_by_region because it takes an advertiser_id (one advertiser may have two advertiser_ids.)
     """
-    start_date =  js_date_string_to_datetime(start_date) or datetime.date(1900, 1, 1)
+    start_date = js_date_string_to_datetime(start_date) or datetime.date(1900, 1, 1)
     end_date = js_date_string_to_datetime(end_date) or datetime.date.today()
 
     earliest_date_after_start_date = session.query(
@@ -575,32 +498,7 @@ def spend_of_advertiser_id_by_region(
     }
 
 
-def search_political_ads_cache_key_maker(
-    session,
-    querystring=None,
-    advertiser_id=None,
-    advertiser_name=None,
-    start_date=None,
-    end_date=None,
-    page=1,
-    page_size=PAGE_SIZE,
-):
-    """ignore the session in caching"""
-    return keys_toolkit_order_independent.make_key(
-        [
-            querystring,
-            advertiser_id,
-            advertiser_name,
-            start_date,
-            end_date,
-            page,
-            page_size,
-        ],
-        [],
-    )
-
-
-@cached(ttl=ONE_DAY_IN_SECONDS, custom_key_maker=search_political_ads_cache_key_maker)
+@cache.global_cache.memoize(timeout=ONE_DAY_IN_SECONDS, args_to_ignore=["session"])
 def search_political_ads(
     session,
     querystring=None,
@@ -668,42 +566,7 @@ def search_political_ads(
     return list(query.slice((page - 1) * page_size, page * page_size))
 
 
-def search_observed_video_ads_cache_key_maker(
-    session,
-    querystring=None,
-    uploader_id=None,
-    start_date=None,
-    end_date=None,
-    targeting=None,
-    observed_only=False,
-    political_only=False,
-    missing_ads_only=False,
-    page=1,
-    page_size=PAGE_SIZE,
-):
-    """ignore the session in caching"""
-    if targeting is None:
-        targeting = {}
-    return keys_toolkit_order_independent.make_key(
-        [
-            querystring,
-            uploader_id,
-            start_date,
-            end_date,
-            targeting,
-            observed_only,
-            political_only,
-            missing_ads_only,
-            page,
-            page_size,
-        ],
-        [],
-    )
-
-
-@cached(
-    ttl=ONE_DAY_IN_SECONDS, custom_key_maker=search_observed_video_ads_cache_key_maker
-)
+@cache.global_cache.memoize(timeout=ONE_DAY_IN_SECONDS, args_to_ignore=["session"])
 def search_observed_video_ads(
     session,
     querystring=None,
@@ -792,14 +655,6 @@ def search_observed_video_ads(
     return list(query.slice((page - 1) * page_size, page * page_size))
 
 
-def autocomplete_advertiser_name_cache_key_maker(session, advertiser_name_substr):
-    return keys_toolkit_order_independent.make_key([advertiser_name_substr], [])
-
-
-@cached(
-    ttl=ONE_DAY_IN_SECONDS,
-    custom_key_maker=autocomplete_advertiser_name_cache_key_maker,
-)
 def autocomplete_advertiser_name(session, advertiser_name_substr):
     query = session.query(
         models.AdvertiserStat.advertiser_name, models.AdvertiserStat.advertiser_id
@@ -812,15 +667,6 @@ def autocomplete_advertiser_name(session, advertiser_name_substr):
     return list(query.slice(0, 50))
 
 
-def get_uploader_ids_for_advertiser_cache_key_maker(session, advertiser_name):
-    """ignore the session in caching"""
-    return keys_toolkit_order_independent.make_key([advertiser_name], [])
-
-
-@cached(
-    ttl=ONE_DAY_IN_SECONDS,
-    custom_key_maker=get_uploader_ids_for_advertiser_cache_key_maker,
-)
 def get_uploader_ids_for_advertiser(session, advertiser_name):
     """
     a political advertiser's video ads have an uploader (like a user id/user name for the account that uploaded the video).
@@ -847,12 +693,6 @@ def get_uploader_ids_for_advertiser(session, advertiser_name):
 #  - violating ads: A page for ads that have been removed by Google (but which we scraped beforehand)
 
 
-def all_kinds_of_missed_ads_cache_key_maker(session, kind=None, page=1, page_size=PAGE_SIZE, advertiser_substring=None):
-    """ignore the session in caching"""
-    return keys_toolkit_order_independent.make_key([kind, page, page_size, advertiser_substring], [])
-
-
-@cached(ttl=ONE_DAY_IN_SECONDS, custom_key_maker=all_kinds_of_missed_ads_cache_key_maker)
 def all_kinds_of_missed_ads(session, kind=None, page=1, page_size=PAGE_SIZE, advertiser_substring=None):
     """
         there are four kinds of missed ads:
@@ -879,7 +719,6 @@ def all_kinds_of_missed_ads(session, kind=None, page=1, page_size=PAGE_SIZE, adv
     """
     query = all_kinds_of_missed_ads_ids_query(session, kind=kind, advertiser_substring=advertiser_substring)
     page_of_results = list(query.slice((page - 1) * page_size, page * page_size))
-
 
     # this is just a complicated way of getting the YouTubeVideo and GoogleAdCreative objects from the join above
     # without fetching each one with a separate request, but while retaining their sort order.
@@ -910,38 +749,38 @@ def all_kinds_of_missed_ads(session, kind=None, page=1, page_size=PAGE_SIZE, adv
         else:
             raise TypeError("unknown missed ad type `{}`".format(kind))
 
-    sorted_missed_ad_objects = sorted(missed_youtube_videos + missed_google_ad_creatives, key=lambda obj: result_sort_keys[obj.id if hasattr(obj, 'id') else obj.ad_id] )
-    return [(kind, missed_ad_to_object(kind, ad_obj)) for kind, ad_obj  in zip(result_kinds, sorted_missed_ad_objects)]
+    sorted_missed_ad_objects = sorted(missed_youtube_videos + missed_google_ad_creatives, key=lambda obj: result_sort_keys[obj.id if hasattr(obj, "id") else obj.ad_id])
+    return [(kind, missed_ad_to_object(kind, ad_obj)) for kind, ad_obj in zip(result_kinds, sorted_missed_ad_objects)]
 
 
 def all_kinds_of_missed_ads_ids_query(session, kind=None, advertiser_substring=None):
     """
     """
-    with_fake_columns = lambda query: query.with_entities(db.literal_column("''").label('id'), db.literal_column("''").label('advertiser_name'), db.literal_column("''").label('kind'), db.literal_column("'2021-01-01'::timestamp").label('date'))
+    with_fake_columns = lambda query: query.with_entities(db.literal_column("''").label("id"), db.literal_column("''").label("advertiser_name"), db.literal_column("''").label("kind"), db.literal_column("'2021-01-01'::timestamp").label("date"))
     disappearing = disappearing_ads_query(session, advertiser_substring=advertiser_substring).with_entities(
             models.CreativeStat.ad_id.label("id"),
             models.AdvertiserStat.advertiser_name,
             db.literal_column("'disappearing'").label("kind"),
             models.CreativeStat.first_served_timestamp.label("date")
-        ) if (kind is None or kind == "disappearing")  else with_fake_columns(session.query(models.CreativeStat)).filter(db.sql.false())
+        ) if (kind is None or kind == "disappearing") else with_fake_columns(session.query(models.CreativeStat)).filter(db.sql.false())
     missed = political_seeming_missed_ads_query(session, advertiser_substring=advertiser_substring).with_entities(
             models.YoutubeVideo.id.label("id"),
             models.YoutubeVideo.uploader,
             db.literal_column("'missed'").label("kind"),
             models.YoutubeVideo.upload_date.label("date")
-        ) if (kind is None or kind == "missed")  else with_fake_columns(session.query(models.YoutubeVideo)).filter(db.sql.false())
+        ) if (kind is None or kind == "missed") else with_fake_columns(session.query(models.YoutubeVideo)).filter(db.sql.false())
     violative = violating_ads_query(session, advertiser_substring=advertiser_substring, include_advertiser_name=True).with_entities(
             models.CreativeStat.ad_id.label("id"),
             models.AdvertiserStat.advertiser_name,
             db.literal_column("'violative'").label("kind"),
             models.CreativeStat.first_served_timestamp.label("date")
-        ) if (kind is None or kind == "violative")  else with_fake_columns(session.query(models.CreativeStat)).filter(db.sql.false())
+        ) if (kind is None or kind == "violative") else with_fake_columns(session.query(models.CreativeStat)).filter(db.sql.false())
     query = disappearing.union_all(missed, violative)
     query = query.order_by(db.literal_column("date").desc())
     return query
 
 
-@cached(ttl=ONE_DAY_IN_SECONDS)
+@cache.global_cache.memoize(timeout=ONE_DAY_IN_SECONDS, args_to_ignore=["session"])
 def disappearing_ads_query(session, advertiser_substring=None):
     """
     factoring out the query for disappearing_ads(), disappearing_ads_counts() to avoid repetition. (see docs for those methods)
@@ -950,7 +789,7 @@ def disappearing_ads_query(session, advertiser_substring=None):
     query = query.join(models.CreativeStat)
     query = query.join(models.AdvertiserStat)
     if advertiser_substring is not None:
-        query = query.filter(models.AdvertiserStat.advertiser_name.ilike(f'%{advertiser_substring}%'))
+        query = query.filter(models.AdvertiserStat.advertiser_name.ilike(f"%{advertiser_substring}%"))
     query = query.outerjoin(models.YoutubeVideo)
     query = query.filter(
         models.CreativeStat.report_date
@@ -960,12 +799,6 @@ def disappearing_ads_query(session, advertiser_substring=None):
     return query
 
 
-def disappearing_ads_cache_key_maker(session, advertiser_name=None, page=1, page_size=PAGE_SIZE):
-    """ignore the session in caching"""
-    return keys_toolkit_order_independent.make_key([advertiser_name, page, page_size], [])
-
-
-@cached(ttl=ONE_DAY_IN_SECONDS, custom_key_maker=disappearing_ads_cache_key_maker)
 def disappearing_ads(session, advertiser_name=None, page=1, page_size=PAGE_SIZE):
     """
     session: sqlalchemy session
@@ -985,14 +818,6 @@ def disappearing_ads(session, advertiser_name=None, page=1, page_size=PAGE_SIZE)
     return list(query.slice((page - 1) * page_size, page * page_size))
 
 
-def disappearing_ads_counts_cache_key_maker(session, page=1, page_size=PAGE_SIZE):
-    """ignore the session in caching"""
-    return keys_toolkit_order_independent.make_key([page, page_size], [])
-
-
-@cached(
-    ttl=ONE_DAY_IN_SECONDS, custom_key_maker=disappearing_ads_counts_cache_key_maker
-)
 def disappearing_ads_counts(session, page=1, page_size=PAGE_SIZE):
     """
     session: sqlalchemy session
@@ -1014,7 +839,6 @@ def disappearing_ads_counts(session, page=1, page_size=PAGE_SIZE):
     return query.all()  # list(query.slice((page - 1) * page_size, page * page_size))
 
 
-@cached(ttl=ONE_DAY_IN_SECONDS)
 def disappearing_youtube_ads(session):
     """
     session: sqlalchemy session
@@ -1099,14 +923,13 @@ def political_seeming_missed_ads_query(session, threshold=POLITICAL_THRESHOLD, a
         models.GoogleAdCreative.ad_id == None
     )
     if advertiser_substring is not None:
-        query = query.filter(models.YoutubeVideo.uploader.ilike(f'%{advertiser_substring}%'))
+        query = query.filter(models.YoutubeVideo.uploader.ilike(f"%{advertiser_substring}%"))
     query = query.filter(
         models.InferenceValue.value > threshold
     )  # TODO: figure out what the right threshold is.
 
     def clean_advertiser_name_for_matching(name):
-        return db.func.trim(db.func.replace(db.func.replace(db.func.replace(db.func.replace(db.func.replace(db.func.upper(name), ',', ''), '.', ''), ' LLC', ''), ' INC', ''), ' ', ''))
-
+        return db.func.trim(db.func.replace(db.func.replace(db.func.replace(db.func.replace(db.func.replace(db.func.upper(name), ",", ""), ".", ""), " LLC", ""), " INC", ""), " ", ""))
 
     # To cut down on false positives, we join the (cleaned) advertiser names to FB advertiser names
     uploaders_of_political_google_ads_sq = session.query(db.func.distinct(models.YoutubeVideo.uploader_id).label("uploader_id")) \
@@ -1120,18 +943,10 @@ def political_seeming_missed_ads_query(session, threshold=POLITICAL_THRESHOLD, a
     query = query_by_fb_disclaimer.union(query_by_google_uploader_name)
     return query
 
-def political_seeming_missed_ads_cache_key_maker(
+
+def political_seeming_missed_ads(
     session, page=1, page_size=PAGE_SIZE, threshold=POLITICAL_THRESHOLD
 ):
-    """ignore the session in caching"""
-    return keys_toolkit_order_independent.make_key([page, page_size, threshold], [])
-
-
-@cached(
-    ttl=ONE_DAY_IN_SECONDS,
-    custom_key_maker=political_seeming_missed_ads_cache_key_maker,
-)
-def political_seeming_missed_ads(session, page=1, page_size=PAGE_SIZE, threshold=POLITICAL_THRESHOLD):
     """
     session: sqlalchemy session
     page: 1-indexed
@@ -1146,14 +961,6 @@ def political_seeming_missed_ads(session, page=1, page_size=PAGE_SIZE, threshold
     return list(query.slice((page - 1) * page_size, page * page_size))
 
 
-def jobby_seeming_ads_cache_key_maker(
-    session, page=1, page_size=PAGE_SIZE, threshold=JOB_THRESHOLD
-):
-    """ignore the session in caching"""
-    return keys_toolkit_order_independent.make_key([page, page_size, threshold], [])
-
-
-@cached(ttl=ONE_DAY_IN_SECONDS, custom_key_maker=jobby_seeming_ads_cache_key_maker)
 def jobby_seeming_ads(session, page=1, page_size=PAGE_SIZE, threshold=JOB_THRESHOLD):
     """
     session: sqlalchemy session
@@ -1182,10 +989,7 @@ def jobby_seeming_ads(session, page=1, page_size=PAGE_SIZE, threshold=JOB_THRESH
     return list(query.slice((page - 1) * page_size, page * page_size))
 
 
-def violating_ads_cache_key_maker(session, page=1, page_size=PAGE_SIZE):
-    """ignore the session in caching"""
-    return keys_toolkit_order_independent.make_key([page, page_size], [])
-
+@cache.global_cache.memoize(timeout=ONE_DAY_IN_SECONDS, args_to_ignore=["session"])
 def violating_ads_query(session, include_advertiser_name=False, advertiser_name=None, advertiser_substring=None):
     """
         params:
@@ -1204,7 +1008,7 @@ def violating_ads_query(session, include_advertiser_name=False, advertiser_name=
         if advertiser_name is not None:
             query = query.filter(models.AdvertiserStat.advertiser_name == advertiser_name)
         elif advertiser_substring is not None:
-            query = query.filter(models.AdvertiserStat.advertiser_name.ilike(f'%{advertiser_substring}%'))
+            query = query.filter(models.AdvertiserStat.advertiser_name.ilike(f"%{advertiser_substring}%"))
     query = query.outerjoin(models.YoutubeVideo) # this has to be an outerjoin because some violating ads aren't videos (and therefore don't join to the videos table)
     query = query.filter(models.GoogleAdCreative.policy_violation_date != None)
     query = query.filter(
@@ -1225,7 +1029,6 @@ def violating_ads_query(session, include_advertiser_name=False, advertiser_name=
     return query
 
 
-@cached(ttl=ONE_DAY_IN_SECONDS, custom_key_maker=violating_ads_cache_key_maker)
 def violating_ads(session, page=1, page_size=PAGE_SIZE):
     """
     Some political ads appear in the archive, then disappear behind a violation screen. Those might be interesting!
