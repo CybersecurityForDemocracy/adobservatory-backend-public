@@ -944,9 +944,7 @@ def political_seeming_missed_ads_query(session, threshold=POLITICAL_THRESHOLD, a
     return query
 
 
-def political_seeming_missed_ads(
-    session, page=1, page_size=PAGE_SIZE, threshold=POLITICAL_THRESHOLD
-):
+def political_seeming_missed_ads(session, page=1, page_size=PAGE_SIZE, threshold=POLITICAL_THRESHOLD):
     """
     session: sqlalchemy session
     page: 1-indexed
