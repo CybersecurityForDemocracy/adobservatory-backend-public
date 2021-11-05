@@ -32,7 +32,7 @@ def app_engine_service_cache_key_prefix():
     return '{}-{}-'.format(os.getenv('GOOGLE_CLOUD_PROJECT'), os.getenv('GAE_SERVICE'))
 
 def app_engine_deployment_cache_key_prefix():
-    return '{}-{}-'.format(app_engine_service_cache_key_prefix(), os.getenv('GAE_DEPLOYMENT_ID'))
+    return '{}{}-'.format(app_engine_service_cache_key_prefix(), os.getenv('GAE_DEPLOYMENT_ID'))
 
 def cache_key_prefix():
     """Creates cache key prefix of <GCP project name>-<service-name>-<deployment ID>- if
@@ -45,13 +45,14 @@ def cache_key_prefix():
 def cache_list():
     # TODO(macpd): don't access protected class members in order to do this.
     # TODO(macpd): add authn and authz for this handler
+    # TODO(macpd): fix occassional TypeError: Object of type bytes is not JSON serializable
     if running_on_app_engine.running_on_app_engine():
         return Response(
             json.dumps(
-                {'all-deployment-keys': global_cache.cache._read_clients.keys(
-                    app_engine_deployment_cache_key_prefix() + '*'),
-                 'all-service-keys': global_cache.cache._read_clients.keys(
-                    app_engine_service_cache_key_prefix() + '*')
+                {'all-deployment-keys': list(map(str, global_cache.cache._read_clients.keys(
+                    app_engine_deployment_cache_key_prefix() + '*'))),
+                 'all-service-keys': list(map(str, global_cache.cache._read_clients.keys(
+                    app_engine_service_cache_key_prefix() + '*')))
                 }
             ),
             mimetype='application/json')
