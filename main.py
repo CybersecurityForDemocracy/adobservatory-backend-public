@@ -17,17 +17,7 @@ from google.cloud.logging_v2.handlers.handlers import EXCLUDED_LOGGER_DEFAULTS
 from blueprints.ad_observatory_api import ad_observatory_api, ads_search
 from blueprints.google_dashboard import blueprint as google_dashboard
 from common.elastic_search import ElasticSearchApiParams
-from common import date_utils, caching
-
-
-def running_on_app_engine():
-    logging.info(
-        'env vars GAE_ENV: %s, GAE_INSTANCE: %s, GAE_SERVICE: %s, GAE_DEPLOYMENT_ID: %s, '
-        'GAE_APPLICATION: %s, GAE_VERSION: %s, GOOGLE_CLOUD_PROJECT: %s',
-        os.getenv('GAE_ENV'), os.getenv('GAE_INSTANCE'), os.getenv('GAE_SERVICE'),
-        os.getenv('GAE_DEPLOYMENT_ID'), os.getenv('GAE_APPLICATION'), os.getenv('GAE_VERSION'),
-        os.getenv('GOOGLE_CLOUD_PROJECT'))
-    return os.getenv('GAE_ENV', '').startswith('standard') or os.getenv('GAE_INSTANCE', '')
+from common import caching, running_on_app_engine
 
 
 def get_secret_value(secret_name, utf8_decode=True):
@@ -37,31 +27,9 @@ def get_secret_value(secret_name, utf8_decode=True):
         return resp.payload.data.decode('UTF-8')
     return resp.payload.data
 
-def init_cache(server):
-    cache_config = {'CACHE_TYPE': 'SimpleCache',
-                    'CACHE_DEFAULT_TIMEOUT': date_utils.ONE_DAY_IN_SECONDS}
-    if 'REDIS_HOST' in os.environ and 'REDIS_PORT' in os.environ:
-        cache_config['CACHE_TYPE'] = 'RedisCache'
-        cache_config['CACHE_REDIS_HOST'] = os.environ['REDIS_HOST']
-        cache_config['CACHE_REDIS_PORT'] = os.environ['REDIS_PORT']
-        if running_on_app_engine():
-            cache_config['CACHE_KEY_PREFIX'] = '{}-{}-{}-'.format(
-                os.getenv('GOOGLE_CLOUD_PROJECT'), os.getenv('GAE_SERVICE'),
-                os.getenv('GAE_DEPLOYMENT_ID'))
-        else:
-            cache_config['CACHE_KEY_PRFIX'] = os.getcwd()
-        # TODO(macpd): figure out how to provide GCP memorystore redis instance CA cert file for
-        # ssl_cert_reqs
-        if os.getenv('REDIS_CONNECTION_DISABLE_TLS'):
-            logging.warning('Disabling TLS for connections to redis instance')
-        else:
-            cache_config['CACHE_OPTIONS'] = {'ssl': True, 'ssl_cert_reqs': None}
-    logging.info('Cache config: %s', cache_config)
-    caching.global_cache.init_app(server, cache_config)
-
 
 def init_server():
-    if running_on_app_engine():
+    if running_on_app_engine.running_on_app_engine():
         os.environ['FB_ADS_DATABASE_PASSWORD'] = get_secret_value(
             os.environ['FB_ADS_DATABASE_PASSWORD_SECRET_NAME'])
         os.environb[b'FLASK_APP_SECRET_KEY'] = get_secret_value(
@@ -79,9 +47,9 @@ def init_server():
         google_dashboard.google_dashboard_blueprint,
         url_prefix=google_dashboard.URL_PREFIX,
     )
-    init_cache(server)
+    caching.init_cache(server, cache_blueprint_url_prefix='/')
 
-    if running_on_app_engine():
+    if running_on_app_engine.running_on_app_engine():
         os.environ['GOOGLE_ADS_DATABASE_PASSWORD'] = get_secret_value(
             os.environ['GOOGLE_ADS_DATABASE_PASSWORD_SECRET_NAME'])
         os.environ['AD_OBSERVATORY_API_USER_DATABASE_PASSWORD'] = get_secret_value(
@@ -116,7 +84,7 @@ LOGGING_FORMAT = (
     '[%(levelname)s\t%(asctime)s] %(process)d %(thread)d {%(filename)s:%(lineno)d} %(message)s')
 logging.basicConfig(format=LOGGING_FORMAT)
 
-if running_on_app_engine():
+if running_on_app_engine.running_on_app_engine():
     cloud_logger_client = google.cloud.logging.Client()
     # Retrieves a Cloud Logging handler based on the environment
     # you're running in and integrates the handler with the
