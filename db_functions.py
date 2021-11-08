@@ -366,7 +366,7 @@ class FBAdsDBInterface(BaseDBInterface):
         cursor.execute(query, {'page_id': page_id})
         logging.debug('page_owner query: %s', cursor.query.decode())
         if cursor:
-            return cursor.fetchone()['page_owner']
+            return cursor.fetchone()
         return None
 
     def topics(self):
