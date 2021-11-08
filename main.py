@@ -17,12 +17,7 @@ from google.cloud.logging_v2.handlers.handlers import EXCLUDED_LOGGER_DEFAULTS
 from blueprints.ad_observatory_api import ad_observatory_api, ads_search
 from blueprints.google_dashboard import blueprint as google_dashboard
 from common.elastic_search import ElasticSearchApiParams
-
-
-def running_on_app_engine():
-    logging.info('env vars GAE_ENV: %s, GAE_INSTANCE: %s',
-                 os.getenv('GAE_ENV'), os.getenv('GAE_INSTANCE'))
-    return os.getenv('GAE_ENV', '').startswith('standard') or os.getenv('GAE_INSTANCE', '')
+from common import caching, running_on_app_engine
 
 
 def get_secret_value(secret_name, utf8_decode=True):
@@ -34,7 +29,7 @@ def get_secret_value(secret_name, utf8_decode=True):
 
 
 def init_server():
-    if running_on_app_engine():
+    if running_on_app_engine.running_on_app_engine():
         os.environ['FB_ADS_DATABASE_PASSWORD'] = get_secret_value(
             os.environ['FB_ADS_DATABASE_PASSWORD_SECRET_NAME'])
         os.environb[b'FLASK_APP_SECRET_KEY'] = get_secret_value(
@@ -52,8 +47,9 @@ def init_server():
         google_dashboard.google_dashboard_blueprint,
         url_prefix=google_dashboard.URL_PREFIX,
     )
+    caching.init_cache(server, cache_blueprint_url_prefix='/')
 
-    if running_on_app_engine():
+    if running_on_app_engine.running_on_app_engine():
         os.environ['GOOGLE_ADS_DATABASE_PASSWORD'] = get_secret_value(
             os.environ['GOOGLE_ADS_DATABASE_PASSWORD_SECRET_NAME'])
         os.environ['AD_OBSERVATORY_API_USER_DATABASE_PASSWORD'] = get_secret_value(
@@ -88,7 +84,7 @@ LOGGING_FORMAT = (
     '[%(levelname)s\t%(asctime)s] %(process)d %(thread)d {%(filename)s:%(lineno)d} %(message)s')
 logging.basicConfig(format=LOGGING_FORMAT)
 
-if running_on_app_engine():
+if running_on_app_engine.running_on_app_engine():
     cloud_logger_client = google.cloud.logging.Client()
     # Retrieves a Cloud Logging handler based on the environment
     # you're running in and integrates the handler with the
