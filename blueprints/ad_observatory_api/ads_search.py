@@ -541,6 +541,9 @@ def handle_ad_cluster_search(topic_id, min_date, max_date, gender, age_range, re
                              response_filter=caching.cache_if_response_no_server_error,
                              timeout=date_utils.SIX_HOURS_IN_SECONDS)
 def get_ad_clusters():
+    return Response(json.dumps(get_ad_clusters_data(request)), mimetype='application/json')
+
+def get_ad_clusters_data(request):
     if request.method == 'POST':
         if 'reverse_image_search' not in request.files:
             abort(400, description='Client must provide a reverse_image_search file')
@@ -574,8 +577,7 @@ def get_ad_clusters():
             topic_id, min_date, max_date, gender, age_range, region, language, order_by,
             order_direction, num_requested, offset, full_text_search_query, page_id)
 
-    return Response(json.dumps([get_ad_cluster_record(row) for row in ad_cluster_data]),
-                    mimetype='application/json')
+    return [get_ad_cluster_record(row) for row in ad_cluster_data]
 
 
 def cluster_additional_ads(db_interface, ad_cluster_id):
