@@ -3,7 +3,6 @@ dhash
 Flask
 Flask-Cors
 Flask-Caching
-gunicorn
 google-api-core
 grpcio
 google-auth
