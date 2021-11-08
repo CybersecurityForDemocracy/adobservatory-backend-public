@@ -1,9 +1,9 @@
 import datetime
 import logging
 
-SIX_HOURS_IN_SECONDS = datetime.timedelta(hours=6).total_seconds()
-ONE_HOUR_IN_SECONDS = datetime.timedelta(hours=1).total_seconds()
-ONE_DAY_IN_SECONDS = datetime.timedelta(days=1).total_seconds()
+SIX_HOURS_IN_SECONDS = int(datetime.timedelta(hours=6).total_seconds())
+ONE_HOUR_IN_SECONDS = int(datetime.timedelta(hours=1).total_seconds())
+ONE_DAY_IN_SECONDS = int(datetime.timedelta(days=1).total_seconds())
 
 def parse_date_arg(arg_str, oldest_allowed_date=None, max_days_since_now=None):
     """Parse request arg as date with limits on oldest allowed date or max days since now.
