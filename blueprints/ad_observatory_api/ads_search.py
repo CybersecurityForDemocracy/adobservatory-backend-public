@@ -605,6 +605,9 @@ def format_advertiser_info(advertiser_info):
                              response_filter=caching.cache_if_response_no_server_error,
                              timeout=date_utils.SIX_HOURS_IN_SECONDS)
 def get_ad_details(archive_id):
+    return Response(json.dumps(ad_details(archive_id)), mimetype='application/json')
+
+def ad_details(archive_id):
     db_connection = db_functions.get_fb_ads_database_connection()
     db_interface = db_functions.FBAdsDBInterface(db_connection)
 
@@ -651,7 +654,7 @@ def get_ad_details(archive_id):
     language_code_to_name = make_language_code_to_name_map(db_interface.ad_languages(archive_id))
     ad_data['languages'] = [language_code_to_name.get(lang, None) for lang in language_code_to_name]
 
-    return Response(json.dumps(ad_data), mimetype='application/json')
+    return ad_data
 
 
 @blueprint.route('/ad-clusters/<int:ad_cluster_id>')
