@@ -173,7 +173,6 @@ def get_total_spending_by_spender_in_region_since_date(page_id, region_name):
     if not start_date:
         abort(400)
 
-    respone_data = None
 
     with db_functions.get_fb_ads_database_connection() as db_connection:
         db_interface = db_functions.FBAdsDBInterface(db_connection)
@@ -185,18 +184,17 @@ def get_total_spending_by_spender_in_region_since_date(page_id, region_name):
     if not results:
         return Response(status=204, mimetype='application/json')
 
-    if results:
-        page_name = results.results[0]['page_name']
-        # TODO(macpd): remove this once FE uses /pages/<int:page_id> to get owned page IDs
-        results.results[0]['page_ids'] = owned_pages
-        response_data = json.dumps(
-            {'start_date': results.start_date.isoformat(),
-             'end_date': results.end_date.isoformat(),
-             'page_id': page_id,
-             'page_owner': page_owner,
-             'page_name': page_name,
-             'region_name': region_name,
-             'spenders': results.results})
+    page_name = results.results[0]['page_name']
+    # TODO(macpd): remove this once FE uses /pages/<int:page_id> to get owned page IDs
+    results.results[0]['page_ids'] = owned_pages
+    response_data = json.dumps(
+        {'start_date': results.start_date.isoformat(),
+         'end_date': results.end_date.isoformat(),
+         'page_id': page_id,
+         'page_owner': page_owner,
+         'page_name': page_name,
+         'region_name': region_name,
+         'spenders': results.results})
 
     return Response(response_data, mimetype='application/json')
 
