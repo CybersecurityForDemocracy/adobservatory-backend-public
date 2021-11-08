@@ -71,7 +71,7 @@ def init_cache(server, cache_blueprint_url_prefix):
     To disable endpoints to list keys and clear cache, set cache_blueprint_url_prefix=None
     """
     cache_config = {'CACHE_TYPE': 'SimpleCache',
-                    'CACHE_DEFAULT_TIMEOUT': int(date_utils.ONE_DAY_IN_SECONDS)}
+                    'CACHE_DEFAULT_TIMEOUT': date_utils.ONE_DAY_IN_SECONDS}
     if 'REDIS_HOST' in os.environ and 'REDIS_PORT' in os.environ:
         cache_config['CACHE_TYPE'] = 'RedisCache'
         cache_config['CACHE_REDIS_HOST'] = os.environ['REDIS_HOST']
