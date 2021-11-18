@@ -446,11 +446,11 @@ class FBAdsDBInterface(BaseDBInterface):
         if order_by and order_direction:
             if order_direction not in set(['ASC', 'DESC']):
                 raise ValueError('Invalid ORDER BY directive: \'%s\'' % order_direction)
-            order_by_clause = sql.SQL('ORDER BY {} {}').format(
+            order_by_clause = sql.SQL('ORDER BY {} {}, archive_id ASC').format(
                 sql.Identifier(order_by), sql.SQL(order_direction))
         else:
             order_by_clause = sql.SQL(
-                'ORDER BY impressions.max_spend DESC, ads.ad_delivery_start_time DESC')
+                'ORDER BY impressions.max_spend DESC, ads.ad_delivery_start_time DESC, archive_id ASC')
 
         topic_and_date_where_clause = sql.SQL(
             'WHERE topic_id = %(topic_id)s AND '
@@ -536,11 +536,11 @@ class FBAdsDBInterface(BaseDBInterface):
         if order_by and order_direction:
             if order_direction not in set(['ASC', 'DESC']):
                 raise ValueError('Invalid ORDER BY directive: \'%s\'' % order_direction)
-            order_by_clause = sql.SQL('ORDER BY {} {}').format(
+            order_by_clause = sql.SQL('ORDER BY {} {}, archive_id ASC').format(
                 sql.Identifier(order_by), sql.SQL(order_direction))
         else:
             order_by_clause = sql.SQL(
-                'ORDER BY max_spend DESC, ad_delivery_start_time DESC')
+                'ORDER BY max_spend DESC, ad_delivery_start_time DESC, archive_id ASC')
 
         where_conditions = list(
             filter(None,
@@ -619,11 +619,11 @@ class FBAdsDBInterface(BaseDBInterface):
         if order_by and order_direction:
             if order_direction not in set(['ASC', 'DESC']):
                 raise ValueError('Invalid ORDER BY directive: \'%s\'' % order_direction)
-            order_by_clause = sql.SQL('ORDER BY {} {}').format(
+            order_by_clause = sql.SQL('ORDER BY {} {}, archive_id ASC').format(
                 sql.Identifier(order_by), sql.SQL(order_direction))
         else:
             order_by_clause = sql.SQL(
-                'ORDER BY max_spend DESC, ad_delivery_start_time DESC')
+                'ORDER BY max_spend DESC, ad_delivery_start_time DESC, archive_id ASC')
 
         archive_ids_and_date_where_clause = sql.SQL(
             'WHERE page_metadata.{page_owner_clause} AND '
@@ -704,11 +704,11 @@ class FBAdsDBInterface(BaseDBInterface):
         if order_by and order_direction:
             if order_direction not in set(['ASC', 'DESC']):
                 raise ValueError('Invalid ORDER BY directive: \'%s\'' % order_direction)
-            order_by_clause = sql.SQL('ORDER BY {} {}').format(
+            order_by_clause = sql.SQL('ORDER BY {} {}, ad_cluster_metadata.ad_cluster_id ASC').format(
                 sql.Identifier(order_by), sql.SQL(order_direction))
         else:
             order_by_clause = sql.SQL(
-                'ORDER BY max_spend_sum DESC, ad_cluster_metadata.min_ad_delivery_start_time DESC')
+                'ORDER BY max_spend_sum DESC, ad_cluster_metadata.min_ad_delivery_start_time DESC, ad_cluster_metadata.ad_cluster_id ASC')
 
         topic_and_date_where_clause = sql.SQL(
             'WHERE topic_id = %(topic_id)s AND '
@@ -800,11 +800,11 @@ class FBAdsDBInterface(BaseDBInterface):
         if order_by and order_direction:
             if order_direction not in set(['ASC', 'DESC']):
                 raise ValueError('Invalid ORDER BY directive: \'%s\'' % order_direction)
-            order_by_clause = sql.SQL('ORDER BY {} {}').format(
+            order_by_clause = sql.SQL('ORDER BY {} {}, ad_cluster_metadata.ad_cluster_id ASC').format(
                 sql.Identifier(order_by), sql.SQL(order_direction))
         else:
             order_by_clause = sql.SQL(
-                'ORDER BY max_spend_sum DESC, ad_cluster_metadata.min_ad_delivery_start_time DESC')
+                'ORDER BY max_spend_sum DESC, ad_cluster_metadata.min_ad_delivery_start_time DESC, ad_cluster_metadata.ad_cluster_id ASC')
 
         where_conditions = list(
             filter(None,
@@ -896,11 +896,11 @@ class FBAdsDBInterface(BaseDBInterface):
         if order_by and order_direction:
             if order_direction not in set(['ASC', 'DESC']):
                 raise ValueError('Invalid ORDER BY directive: \'%s\'' % order_direction)
-            order_by_clause = sql.SQL('ORDER BY {} {}').format(
+            order_by_clause = sql.SQL('ORDER BY {} {}, ad_cluster_metadata.ad_cluster_id ASC').format(
                 sql.Identifier(order_by), sql.SQL(order_direction))
         else:
             order_by_clause = sql.SQL(
-                'ORDER BY max_spend_sum DESC, ad_cluster_metadata.min_ad_delivery_start_time DESC')
+                'ORDER BY max_spend_sum DESC, ad_cluster_metadata.min_ad_delivery_start_time DESC, ad_cluster_metadata.ad_cluster_id ASC')
 
         archive_ids_and_date_where_clause = sql.SQL(
             'WHERE ad_cluster_pages.page_id = %(page_id)s AND '
