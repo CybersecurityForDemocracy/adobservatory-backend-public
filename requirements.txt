@@ -8,6 +8,7 @@ grpcio
 google-auth
 google-cloud-logging
 google-cloud-secret-manager
+hiredis
 humanize
 memoization
 pandas
