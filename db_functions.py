@@ -21,6 +21,10 @@ AD_START_DATE_CLAUSE = sql.SQL(
 AD_END_DATE_CLAUSE = sql.SQL(
     '(ad_delivery_start_time <= %(end_date)s OR last_active_date <= %(end_date)s)')
 AD_START_AND_END_DATE_CLAUSE = sql.SQL(' AND ').join([AD_START_DATE_CLAUSE, AD_END_DATE_CLAUSE])
+JOIN_REGION_IMPRESSIONS_USING_ARCHIVE_ID_CLAUSE = sql.SQL(
+    'JOIN region_impressions USING (archive_id)')
+JOIN_DEMO_IMPRESSIONS_USING_ARCHIVE_ID_CLAUSE = sql.SQL(
+    'JOIN demo_impressions USING (archive_id)')
 AGGREGATE_BY_PAGE_ID = 'page_id'
 AGGREGATE_BY_PAGE_OWNER = 'page_owner'
 PAGE_ID_CLAUSE = sql.SQL('page_id = %(page_id)s')
@@ -423,18 +427,24 @@ class FBAdsDBInterface(BaseDBInterface):
         query_args = {'topic_id': topic_id, 'min_date': min_date, 'max_date': max_date,
                       'limit': limit, 'offset': offset}
 
+        join_region_impressions_clause = sql.SQL('')
+        join_demo_impressions_clause = sql.SQL('')
+
         region_where_clause = sql.SQL('')
         if region:
+            join_region_impressions_clause = JOIN_REGION_IMPRESSIONS_USING_ARCHIVE_ID_CLAUSE
             region_where_clause = sql.SQL('AND region_impressions.region = %(region)s')
             query_args['region'] = region
 
         gender_where_clause = sql.SQL('')
         if gender:
+            join_demo_impressions_clause = JOIN_DEMO_IMPRESSIONS_USING_ARCHIVE_ID_CLAUSE
             gender_where_clause = sql.SQL('AND demo_impressions.gender = %(gender)s')
             query_args['gender'] = gender
 
         age_group_where_clause = sql.SQL('')
         if age_group:
+            join_demo_impressions_clause = JOIN_DEMO_IMPRESSIONS_USING_ARCHIVE_ID_CLAUSE
             age_group_where_clause = sql.SQL('AND demo_impressions.age_group = %(age_group)s')
             query_args['age_group'] = age_group
 
@@ -466,12 +476,16 @@ class FBAdsDBInterface(BaseDBInterface):
             impressions.max_impressions,
             array_agg(DISTINCT ad_creatives.ad_creative_body_language) as languages
             FROM ads JOIN ad_creatives USING(archive_id) JOIN ad_topics USING(archive_id)
-            JOIN impressions USING(archive_id) JOIN region_impressions USING (archive_id)
-            JOIN demo_impressions USING(archive_id) {where_clause}
+            JOIN impressions USING(archive_id)
+            {join_region_impressions_clause}
+            {join_demo_impressions_clause}
+            {where_clause}
             GROUP BY archive_id, impressions.last_active_date, impressions.min_spend,
             impressions.max_spend, impressions.min_impressions, impressions.max_impressions
             {order_by_clause} LIMIT %(limit)s OFFSET %(offset)s'''
-            ).format(where_clause=where_clause, order_by_clause=order_by_clause)
+            ).format(join_region_impressions_clause=join_region_impressions_clause,
+                     join_demo_impressions_clause=join_demo_impressions_clause,
+                     where_clause=where_clause, order_by_clause=order_by_clause)
         cursor.execute(query, query_args)
         logging.info('ad_details_of_topic query: %s', cursor.query.decode())
         return cursor.fetchall()
@@ -501,6 +515,9 @@ class FBAdsDBInterface(BaseDBInterface):
         cursor = self.get_cursor()
         query_args = {'archive_ids': archive_ids, 'limit': limit, 'offset': offset}
 
+        join_region_impressions_clause = sql.SQL('')
+        join_demo_impressions_clause = sql.SQL('')
+
         min_date_where_clause = None
         if min_date:
             min_date_where_clause = sql.SQL(
@@ -515,16 +532,19 @@ class FBAdsDBInterface(BaseDBInterface):
 
         region_where_clause = None
         if region:
+            join_region_impressions_clause = JOIN_REGION_IMPRESSIONS_USING_ARCHIVE_ID_CLAUSE
             region_where_clause = sql.SQL('region = %(region)s')
             query_args['region'] = region
 
         gender_where_clause = None
         if gender:
+            join_demo_impressions_clause = JOIN_DEMO_IMPRESSIONS_USING_ARCHIVE_ID_CLAUSE
             gender_where_clause = sql.SQL('gender = %(gender)s')
             query_args['gender'] = gender
 
         age_group_where_clause = None
         if age_group:
+            join_demo_impressions_clause = JOIN_DEMO_IMPRESSIONS_USING_ARCHIVE_ID_CLAUSE
             age_group_where_clause = sql.SQL('age_group = %(age_group)s')
             query_args['age_group'] = age_group
 
@@ -559,12 +579,16 @@ class FBAdsDBInterface(BaseDBInterface):
             impressions.max_impressions,
             array_agg(DISTINCT ad_creatives.ad_creative_body_language) as languages
             FROM ads JOIN ad_creatives USING(archive_id) JOIN ad_topics USING(archive_id)
-            JOIN impressions USING(archive_id) JOIN region_impressions USING (archive_id)
-            JOIN demo_impressions USING(archive_id) {where_clause}
+            JOIN impressions USING(archive_id)
+            {join_region_impressions_clause}
+            {join_demo_impressions_clause}
+            {where_clause}
             GROUP BY archive_id, impressions.last_active_date, impressions.min_spend,
             impressions.max_spend, impressions.min_impressions, impressions.max_impressions
             {order_by_clause} LIMIT %(limit)s OFFSET %(offset)s'''
-            ).format(where_clause=where_clause, order_by_clause=order_by_clause)
+            ).format(join_region_impressions_clause=join_region_impressions_clause,
+                     join_demo_impressions_clause=join_demo_impressions_clause,
+                     where_clause=where_clause, order_by_clause=order_by_clause)
         cursor.execute(query, query_args)
         logging.debug('ad_details_of_archive_ids query: %s', cursor.query.decode())
         return cursor.fetchall()
@@ -596,18 +620,24 @@ class FBAdsDBInterface(BaseDBInterface):
         query_args = {'page_id': page_id, 'min_date': min_date, 'max_date': max_date,
                       'limit': limit, 'offset': offset}
 
+        join_region_impressions_clause = sql.SQL('')
+        join_demo_impressions_clause = sql.SQL('')
+
         region_where_clause = sql.SQL('')
         if region:
+            join_region_impressions_clause = JOIN_REGION_IMPRESSIONS_USING_ARCHIVE_ID_CLAUSE
             region_where_clause = sql.SQL('AND region = %(region)s')
             query_args['region'] = region
 
         gender_where_clause = sql.SQL('')
         if gender:
+            join_demo_impressions_clause = JOIN_DEMO_IMPRESSIONS_USING_ARCHIVE_ID_CLAUSE
             gender_where_clause = sql.SQL('AND gender = %(gender)s')
             query_args['gender'] = gender
 
         age_group_where_clause = sql.SQL('')
         if age_group:
+            join_demo_impressions_clause = JOIN_DEMO_IMPRESSIONS_USING_ARCHIVE_ID_CLAUSE
             age_group_where_clause = sql.SQL('AND age_group = %(age_group)s')
             query_args['age_group'] = age_group
 
@@ -641,12 +671,16 @@ class FBAdsDBInterface(BaseDBInterface):
             impressions.max_impressions,
             array_agg(DISTINCT ad_creatives.ad_creative_body_language) as languages
             FROM ads JOIN ad_creatives USING(archive_id) JOIN ad_topics USING(archive_id)
-            JOIN impressions USING(archive_id) JOIN region_impressions USING (archive_id)
-            JOIN demo_impressions USING(archive_id) JOIN page_metadata USING(page_id) {where_clause}
+            JOIN impressions USING(archive_id)
+            {join_region_impressions_clause}
+            {join_demo_impressions_clause}
+            JOIN page_metadata USING(page_id) {where_clause}
             GROUP BY archive_id, impressions.last_active_date, impressions.min_spend,
             impressions.max_spend, impressions.min_impressions, impressions.max_impressions
             {order_by_clause} LIMIT %(limit)s OFFSET %(offset)s'''
-            ).format(where_clause=where_clause, order_by_clause=order_by_clause)
+            ).format(join_region_impressions_clause=join_region_impressions_clause,
+                     join_demo_impressions_clause=join_demo_impressions_clause,
+                     where_clause=where_clause, order_by_clause=order_by_clause)
         cursor.execute(query, query_args)
         logging.debug('ad_details_of_page_id query: %s', cursor.query.decode())
         return cursor.fetchall()
