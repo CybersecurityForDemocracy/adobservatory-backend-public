@@ -71,6 +71,9 @@ LANGUAGE_CODE_TO_NAME_OVERRIDE_MAP = {
     'zh-cn': 'Chinese (Simplified)',
     'zh-tw': 'Chinese (Traditional)'
 }
+NUM_REQUESTED_ALL = 'ALL'
+MAX_AD_SEARCH_QUERY_LIMIT = 1000
+MAX_ELASTIC_SEARCH_RESULTS = 10 * MAX_AD_SEARCH_QUERY_LIMIT
 
 
 def get_image_dhash_as_int(image_file_stream):
@@ -256,15 +259,15 @@ def get_ad_search_allowed_order_by_and_direction(order_by, direction):
 
     return None, None
 
+@caching.global_cache.memoize(timeout=date_utils.ONE_DAY_IN_SECONDS)
 def get_ad_cluster_data_from_full_text_search(query, page_id, min_date, max_date, region, gender,
-                                              age_group, language, order_by, order_direction, limit,
-                                              offset):
-    es_max_results = min(1000 * limit, 10000)
+                                              age_group, language, order_by, order_direction,
+                                              limit):
     es_api_params = current_app.config['FB_ADS_ELASTIC_SEARCH_API_PARAMS']
     query_results = elastic_search.query_elastic_search_fb_ad_creatives_index(
         elastic_search_api_params=es_api_params,
         ad_creative_query=query,
-        max_results=es_max_results,
+        max_results=MAX_ELASTIC_SEARCH_RESULTS,
         page_id_query=page_id,
         ad_delivery_start_time=min_date,
         ad_delivery_stop_time=max_date,
@@ -280,17 +283,27 @@ def get_ad_cluster_data_from_full_text_search(query, page_id, min_date, max_date
         # TODO(macpd): use the archive_ids from search results for screenshot cover photo.
         return db_interface.ad_cluster_details_for_archive_ids(archive_ids, min_date, max_date,
                                                                region, gender, age_group, language,
-                                                               order_by, order_direction, limit,
-                                                               offset)
+                                                               order_by, order_direction,
+                                                               limit=limit)
 
+@caching.global_cache.memoize(timeout=date_utils.ONE_DAY_IN_SECONDS)
+def get_ad_cluster_data_for_page_id(page_id, min_date, max_date, region, gender, age_group,
+                                    language, order_by, order_direction, limit):
+    with db_functions.get_fb_ads_database_connection() as db_connection:
+        db_interface = db_functions.FBAdsDBInterface(db_connection)
+        return db_interface.ad_cluster_details_for_page_id(
+            page_id, min_date=min_date, max_date=max_date, region=region, gender=gender,
+            age_group=age_group, language=language, order_by=order_by,
+            order_direction=order_direction, limit=limit)
+
+@caching.global_cache.memoize(timeout=date_utils.ONE_DAY_IN_SECONDS)
 def get_ad_data_from_full_text_search(query, page_id, min_date, max_date, region, gender, age_group,
-                                      language, order_by, order_direction, limit, offset):
-    es_max_results = min(1000 * limit, 10000)
+                                      language, order_by, order_direction, limit):
     es_api_params = current_app.config['FB_ADS_ELASTIC_SEARCH_API_PARAMS']
     query_results = elastic_search.query_elastic_search_fb_ad_creatives_index(
         elastic_search_api_params=es_api_params,
         ad_creative_query=query,
-        max_results=es_max_results,
+        max_results=MAX_ELASTIC_SEARCH_RESULTS,
         page_id_query=page_id,
         ad_delivery_start_time=min_date,
         ad_delivery_stop_time=max_date,
@@ -305,7 +318,41 @@ def get_ad_data_from_full_text_search(query, page_id, min_date, max_date, region
         db_interface = db_functions.FBAdsDBInterface(db_connection)
         return db_interface.ad_details_of_archive_ids(archive_ids, min_date, max_date, region,
                                                       gender, age_group, language, order_by,
-                                                      order_direction, limit, offset)
+                                                      order_direction, limit=limit)
+
+@caching.global_cache.memoize(timeout=date_utils.ONE_DAY_IN_SECONDS)
+def get_ad_data_for_page_id(page_id, min_date, max_date, region, gender, age_group, language,
+                            order_by, order_direction, limit):
+    with db_functions.get_fb_ads_database_connection() as db_connection:
+        db_interface = db_functions.FBAdsDBInterface(db_connection)
+        return db_interface.ad_details_of_page_id(
+            page_id, min_date=min_date, max_date=max_date, region=region, gender=gender,
+            age_group=age_group, language=language, order_by=order_by,
+            order_direction=order_direction, limit=limit)
+
+@caching.global_cache.memoize(timeout=date_utils.ONE_DAY_IN_SECONDS)
+def get_ad_cluster_data_for_topic(
+            topic_id, min_date, max_date, region, gender,
+            age_group, language, order_by,
+            order_direction, limit,
+            min_topic_percentage_threshold):
+    with db_functions.get_fb_ads_database_connection() as db_connection:
+        db_interface = db_functions.FBAdsDBInterface(db_connection)
+        return db_interface.topic_top_ad_clusters_by_spend(
+            topic_id, min_date=min_date, max_date=max_date, region=region, gender=gender,
+            age_group=age_group, language=language, order_by=order_by,
+            order_direction=order_direction, limit=limit,
+            min_topic_percentage_threshold=min_topic_percentage_threshold)
+
+@caching.global_cache.memoize(timeout=date_utils.ONE_DAY_IN_SECONDS)
+def get_ad_data_for_topic(topic_id, min_date, max_date, region, gender, age_group, language,
+                          order_by, order_direction, limit):
+    with db_functions.get_fb_ads_database_connection() as db_connection:
+        db_interface = db_functions.FBAdsDBInterface(db_connection)
+        return db_interface.ad_details_of_topic(
+            topic_id, min_date=min_date, max_date=max_date, region=region, gender=gender,
+            age_group=age_group, language=language, order_by=order_by,
+            order_direction=order_direction, limit=limit)
 
 def get_num_bits_different(archive_id_and_simhash1, archive_id_and_simhash2):
     return dhash.get_num_bits_different(archive_id_and_simhash1.sim_hash,
@@ -360,24 +407,29 @@ def reverse_image_search(image_file_stream, bit_difference_threshold):
                 list(archive_ids), min_date=None, max_date=None, region=None, gender=None,
                 age_group=None, language=None, order_by=None, order_direction=None)
 
-def handle_ad_search(topic_id, min_date, max_date, gender, age_range, region, language,
-                             order_by, order_direction, num_requested, offset,
-                             full_text_search_query, page_id):
+def handle_ad_search(topic_id, min_date, max_date, gender, age_group, region, language, order_by,
+                     order_direction, num_requested, offset, full_text_search_query, page_id):
     if topic_id is not None and full_text_search_query is not None:
         abort(400, description='topic cannot be combined with full_text_search.')
 
-    try:
-        num_requested = int(num_requested)
-    except ValueError:
-        abort(400, description='numResults must be an integer')
-    try:
-        offset = int(offset)
-    except ValueError:
-        abort(400, description='offset must be an integer')
-
-    if num_requested > 20 or offset > 1000:
-        abort(400,
-              description='numResults greater than 20, or offset greater than 1000, not allowed')
+    if num_requested == NUM_REQUESTED_ALL:
+        offset = 0
+        limit = None
+    else:
+        limit = MAX_AD_SEARCH_QUERY_LIMIT
+        try:
+            num_requested = int(num_requested)
+        except ValueError:
+            abort(400, description='numResults must be an integer')
+        try:
+            offset = int(offset)
+        except ValueError:
+            abort(400, description='offset must be an integer')
+        if offset + num_requested > MAX_AD_SEARCH_QUERY_LIMIT:
+            abort(400,
+                  description=(
+                      'sum of numResults and offset must be less than {offset_max}'
+                      ).format(offset_max=MAX_AD_SEARCH_QUERY_LIMIT))
 
 
     # This date parsing is needed because the FE passes raw UTC formatted dates in Zulu time
@@ -407,31 +459,35 @@ def handle_ad_search(topic_id, min_date, max_date, gender, age_range, region, la
             gender = 'unknown'
     if region and region.lower() == 'all':
         region = None
-    if age_range and age_range.lower() == 'all':
-        age_range = None
+    if age_group and age_group.lower() == 'all':
+        age_group = None
     if language and language.lower() == 'all':
         language = None
 
     if full_text_search_query:
-        return get_ad_data_from_full_text_search(
+        results =  get_ad_data_from_full_text_search(
             full_text_search_query, page_id=page_id, min_date=min_date, max_date=max_date,
-            region=region, gender=gender, age_group=age_range, language=language, order_by=order_by,
-            order_direction=order_direction, limit=num_requested, offset=offset)
+            region=region, gender=gender, age_group=age_group, language=language, order_by=order_by,
+            order_direction=order_direction, limit=limit)
 
-    if page_id:
-        with db_functions.get_fb_ads_database_connection() as db_connection:
-            db_interface = db_functions.FBAdsDBInterface(db_connection)
-            return db_interface.ad_details_of_page_id(
-                page_id, min_date=min_date, max_date=max_date, region=region, gender=gender,
-                age_group=age_range, language=language, order_by=order_by,
-                order_direction=order_direction, limit=num_requested, offset=offset)
-
-    with db_functions.get_fb_ads_database_connection() as db_connection:
-        db_interface = db_functions.FBAdsDBInterface(db_connection)
-        return db_interface.ad_details_of_topic(
+    elif page_id:
+        results = get_ad_data_for_page_id(page_id, min_date=min_date, max_date=max_date, region=region,
+                                       gender=gender, age_group=age_group, language=language,
+                                       order_by=order_by, order_direction=order_direction,
+                                       limit=limit)
+    else:
+        results = get_ad_data_for_topic(
             topic_id, min_date=min_date, max_date=max_date, region=region, gender=gender,
-            age_group=age_range, language=language, order_by=order_by,
-            order_direction=order_direction, limit=num_requested, offset=offset)
+            age_group=age_group, language=language, order_by=order_by,
+            order_direction=order_direction, limit=limit)
+
+    if limit:
+        logging.debug('returning results[%s:%s] of %d results', offset, (offset + num_requested),
+                      len(results))
+        return results[offset:(offset+num_requested)]
+
+    return results
+
 
 
 @blueprint.route('/ads', methods=['GET'])
@@ -443,7 +499,7 @@ def get_ads():
     min_date = request.args.get('startDate', None)
     max_date = request.args.get('endDate', None)
     gender = request.args.get('gender', 'ALL')
-    age_range = request.args.get('ageRange', 'ALL')
+    age_group = request.args.get('ageRange', 'ALL')
     region = request.args.get('region', 'All')
     order_by, order_direction = get_ad_search_allowed_order_by_and_direction(
         request.args.get('orderBy', 'max_spend'),
@@ -455,31 +511,37 @@ def get_ads():
     language = request.args.get('language', None)
 
     ad_data = handle_ad_search(
-        topic_id, min_date, max_date, gender, age_range, region, language, order_by,
+        topic_id, min_date, max_date, gender, age_group, region, language, order_by,
         order_direction, num_requested, offset, full_text_search_query, page_id)
 
     ret = [get_ad_record(row) for row in ad_data]
 
     return Response(json.dumps(ret), mimetype='application/json')
 
-def handle_ad_cluster_search(topic_id, min_date, max_date, gender, age_range, region, language,
+def handle_ad_cluster_search(topic_id, min_date, max_date, gender, age_group, region, language,
                              order_by, order_direction, num_requested, offset,
                              full_text_search_query, page_id):
     if topic_id is not None and full_text_search_query is not None:
         abort(400, description='topic cannot be combined with full_text_search.')
 
-    try:
-        num_requested = int(num_requested)
-    except ValueError:
-        abort(400, description='numResults must be an integer')
-    try:
-        offset = int(offset)
-    except ValueError:
-        abort(400, description='offset must be an integer')
-
-    if num_requested > 20 or offset > 1000:
-        abort(400,
-              description='numResults greater than 20, or offset greater than 1000, not allowed')
+    if num_requested == NUM_REQUESTED_ALL:
+        offset = 0
+        limit = None
+    else:
+        limit = MAX_AD_SEARCH_QUERY_LIMIT
+        try:
+            num_requested = int(num_requested)
+        except ValueError:
+            abort(400, description='numResults must be an integer')
+        try:
+            offset = int(offset)
+        except ValueError:
+            abort(400, description='offset must be an integer')
+        if offset + num_requested > MAX_AD_SEARCH_QUERY_LIMIT:
+            abort(400,
+                  description=(
+                      'sum of numResults and offset must be less than {offset_max}'
+                      ).format(offset_max=MAX_AD_SEARCH_QUERY_LIMIT))
 
 
     # This date parsing is needed because the FE passes raw UTC formatted dates in Zulu time
@@ -509,32 +571,37 @@ def handle_ad_cluster_search(topic_id, min_date, max_date, gender, age_range, re
             gender = 'unknown'
     if region and region.lower() == 'all':
         region = None
-    if age_range and age_range.lower() == 'all':
-        age_range = None
+    if age_group and age_group.lower() == 'all':
+        age_group = None
     if language and language.lower() == 'all':
         language = None
 
+
     if full_text_search_query:
-        return get_ad_cluster_data_from_full_text_search(
+        results = get_ad_cluster_data_from_full_text_search(
             full_text_search_query, page_id=page_id, min_date=min_date, max_date=max_date,
-            region=region, gender=gender, age_group=age_range, language=language, order_by=order_by,
-            order_direction=order_direction, limit=num_requested, offset=offset)
+            region=region, gender=gender, age_group=age_group, language=language, order_by=order_by,
+            order_direction=order_direction, limit=limit)
 
-    if page_id:
-        with db_functions.get_fb_ads_database_connection() as db_connection:
-            db_interface = db_functions.FBAdsDBInterface(db_connection)
-            return db_interface.ad_cluster_details_for_page_id(
-                page_id, min_date=min_date, max_date=max_date, region=region, gender=gender,
-                age_group=age_range, language=language, order_by=order_by,
-                order_direction=order_direction, limit=num_requested, offset=offset)
+    elif page_id:
+        results = get_ad_cluster_data_for_page_id(
+            page_id=page_id, min_date=min_date, max_date=max_date, region=region, gender=gender,
+            age_group=age_group, language=language, order_by=order_by,
+            order_direction=order_direction, limit=limit)
+    else:
+        results = get_ad_cluster_data_for_topic(
+                topic_id, min_date=min_date, max_date=max_date, region=region, gender=gender,
+                age_group=age_group, language=language, order_by=order_by,
+                order_direction=order_direction, limit=limit, min_topic_percentage_threshold=0.25)
 
-    with db_functions.get_fb_ads_database_connection() as db_connection:
-        db_interface = db_functions.FBAdsDBInterface(db_connection)
-        return db_interface.topic_top_ad_clusters_by_spend(
-            topic_id, min_date=min_date, max_date=max_date, region=region, gender=gender,
-            age_group=age_range, language=language, order_by=order_by,
-            order_direction=order_direction, limit=num_requested, offset=offset,
-            min_topic_percentage_threshold=0.25)
+    if limit:
+        logging.debug('returning results[%s:%s] of %d results', offset, (offset + num_requested),
+                      len(results))
+        return results[offset:(offset+num_requested)]
+
+    return results
+
+
 
 @blueprint.route('/ad-clusters', methods=['GET', 'POST'])
 @caching.global_cache.cached(query_string=True,
@@ -562,7 +629,7 @@ def get_ad_clusters_data(request):
         min_date = request.args.get('startDate', None)
         max_date = request.args.get('endDate', None)
         gender = request.args.get('gender', 'ALL')
-        age_range = request.args.get('ageRange', 'ALL')
+        age_group = request.args.get('ageRange', 'ALL')
         region = request.args.get('region', 'All')
         order_by, order_direction = get_cluster_search_allowed_order_by_and_direction(
             request.args.get('orderBy', 'max_spend_sum'),
@@ -574,7 +641,7 @@ def get_ad_clusters_data(request):
         language = request.args.get('language', None)
 
         ad_cluster_data = handle_ad_cluster_search(
-            topic_id, min_date, max_date, gender, age_range, region, language, order_by,
+            topic_id, min_date, max_date, gender, age_group, region, language, order_by,
             order_direction, num_requested, offset, full_text_search_query, page_id)
 
     return [get_ad_cluster_record(row) for row in ad_cluster_data]
