@@ -7,6 +7,7 @@ import time
 import requests
 from requests.auth import AuthBase
 import simplejson as json
+from common import date_utils, caching
 
 ElasticSearchApiParams = namedtuple('ElasticSearchApiParams',
                                     ['cluster_base_url',
@@ -52,17 +53,18 @@ def get_int_timestamp(date_obj):
     """
     timestamp = None
     if isinstance(date_obj, datetime.datetime):
-        timestamp = int(date_obj.timestamp())
+        timestamp = int(date_obj.replace(tzinfo=datetime.timezone.utc).timestamp())
     elif isinstance(date_obj, datetime.date):
         timestamp = int(datetime.datetime(year=date_obj.year, month=date_obj.month,
                                           day=date_obj.day, hour=0, minute=0,
-                                          second=0).timestamp())
+                                          second=0, tzinfo=datetime.timezone.utc).timestamp())
     else:
         logging.info('Unsupported type for timestamp conversion: %s', type(date_obj))
 
     return timestamp
 
 
+@caching.global_cache.memoize(timeout=date_utils.ONE_DAY_IN_SECONDS)
 def query_elastic_search_fb_ad_creatives_index(elastic_search_api_params, ad_creative_query=None,
                                                funding_entity_query=None, page_id_query=None,
                                                ad_delivery_start_time=None,
