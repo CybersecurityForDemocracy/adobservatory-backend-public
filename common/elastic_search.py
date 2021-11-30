@@ -79,6 +79,7 @@ def query_elastic_search_fb_ad_creatives_index(elastic_search_api_params, ad_cre
     query['query'] = {}
     query['query']['bool'] = {}
     query['query']['bool']['must'] = must = []
+    query['query']['bool']['filter'] = query_filter = []
     query['query']['bool']['should'] = []
     query['aggs'] = {}
 
@@ -91,6 +92,8 @@ def query_elastic_search_fb_ad_creatives_index(elastic_search_api_params, ad_cre
         sqs['simple_query_string']['fields'] = [
             'body', 'link_url', 'link_title', 'link_description', 'link_caption', 'page_name',
             'funding_entity']
+        if return_archive_ids_only:
+            query['_source'] = ['archive_id']
         sqs['simple_query_string']['query'] = ad_creative_query
         sqs['simple_query_string']['default_operator'] = "and"
         must.append(sqs)
@@ -108,7 +111,7 @@ def query_elastic_search_fb_ad_creatives_index(elastic_search_api_params, ad_cre
     if page_id_query is not None:
         match = {}
         match['match'] = {'page_id': page_id_query}
-        must.append(match)
+        query_filter.append(match)
 
     if ad_delivery_start_time is not None:
         time_range = {}
@@ -116,7 +119,7 @@ def query_elastic_search_fb_ad_creatives_index(elastic_search_api_params, ad_cre
         # Subtract 1 day from start time as rudimentary buffer for timezone issues.
         timestamp = get_int_timestamp(ad_delivery_start_time - datetime.timedelta(days=1))
         time_range['range']['ad_delivery_start_time'] = {'gte': timestamp}
-        must.append(time_range)
+        query_filter.append(time_range)
 
     if ad_delivery_stop_time is not None:
         time_range = {}
@@ -124,7 +127,7 @@ def query_elastic_search_fb_ad_creatives_index(elastic_search_api_params, ad_cre
         # Add 1 day from start time as rudimentary buffer for timezone issues.
         timestamp = get_int_timestamp(ad_delivery_stop_time + datetime.timedelta(days=1))
         time_range['range']['ad_delivery_stop_time'] = {'lte': timestamp}
-        must.append(time_range)
+        query_filter.append(time_range)
 
     request_url = "{cluster_base_url}/{fb_ad_creatives_index_name}/_search".format(
             cluster_base_url=elastic_search_api_params.cluster_base_url,
