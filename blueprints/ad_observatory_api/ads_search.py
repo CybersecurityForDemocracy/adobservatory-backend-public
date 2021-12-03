@@ -14,7 +14,6 @@ import humanize
 from PIL import Image
 import pybktree
 import pycountry
-import requests
 import simplejson as json
 
 import db_functions
@@ -267,7 +266,7 @@ def get_ad_cluster_data_from_full_text_search(query, page_id, min_date, max_date
     query_results = elastic_search.query_elastic_search_fb_ad_creatives_index(
         elastic_search_api_params=es_api_params,
         ad_creative_query=query,
-        max_results=MAX_ELASTIC_SEARCH_RESULTS,
+        max_results=None,
         page_id_query=page_id,
         ad_delivery_start_time=min_date,
         ad_delivery_stop_time=max_date,
@@ -303,7 +302,7 @@ def get_ad_data_from_full_text_search(query, page_id, min_date, max_date, region
     query_results = elastic_search.query_elastic_search_fb_ad_creatives_index(
         elastic_search_api_params=es_api_params,
         ad_creative_query=query,
-        max_results=MAX_ELASTIC_SEARCH_RESULTS,
+        max_results=None,
         page_id_query=page_id,
         ad_delivery_start_time=min_date,
         ad_delivery_stop_time=max_date,
@@ -809,7 +808,6 @@ def pages_type_ahead():
     may also be passed to specify the number of auto-complete results to return.
     '''
     start_time = time.time()
-    headers = {"content-type": "application/json"}
     query = {}
 
     query['query'] = {}
@@ -830,26 +828,18 @@ def pages_type_ahead():
         abort(400, 'The q_arg parameter is required for this endpoint.')
 
     elastic_search_api_params = current_app.config['FB_ADS_ELASTIC_SEARCH_API_PARAMS']
-    url = "{cluster_base_url}/{fb_pages_index_name}/_search".format(
-        cluster_base_url=elastic_search_api_params.cluster_base_url,
-        fb_pages_index_name=elastic_search_api_params.fb_pages_index_name)
-    data = json.dumps(query)
-    logging.debug('Sending type ahead request to %s query: %s', url, data)
+    logging.debug('Sending type ahead request to %s query: %s', elastic_search_api_params.client,
+                  query)
+    response = elastic_search_api_params.client.search(
+        **query, index=elastic_search_api_params.fb_pages_index_name)
 
-    req = requests.get(url, data=data, headers=headers,
-                       auth=elastic_search.ElasticSearchAuth(api_id=elastic_search_api_params.api_id,
-                                              api_key=elastic_search_api_params.api_key)
-                       )
-    req.raise_for_status()
+
     data = {}
-    data['data'] = []
-    json_response = req.json()
-    logging.debug('json_response: %s', json_response)
-    hits = json_response.get('hits', {}).get('hits')
-    for hit in hits:
-        data['data'].append(hit['_source'])
+    logging.debug('response: %s', response)
+    hits = response.get('hits', {}).get('hits')
+    data['data'] = [hit['_source'] for hit in hits]
     data['metadata'] = {}
-    data['metadata']['total'] = req.json()['hits']['total']
+    data['metadata']['total'] = response['hits']['total']
     data['metadata']['execution_time_in_millis'] = round((time.time() - start_time) * 1000, 2)
     return Response(json.dumps(data), mimetype='application/json')
 
