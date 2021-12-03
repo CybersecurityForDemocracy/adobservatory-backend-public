@@ -13,6 +13,7 @@ from flask_cors import CORS
 from google.cloud import secretmanager
 import google.cloud.logging
 from google.cloud.logging_v2.handlers.handlers import EXCLUDED_LOGGER_DEFAULTS
+from elasticsearch import Elasticsearch
 
 from blueprints.ad_observatory_api import ad_observatory_api, ads_search
 from blueprints.google_dashboard import blueprint as google_dashboard
@@ -69,8 +70,11 @@ def init_server():
 
     server.config['REMEMBER_COOKIE_SECURE'] = True
     server.secret_key = os.environb[b'FLASK_APP_SECRET_KEY']
+
     server.config['FB_ADS_ELASTIC_SEARCH_API_PARAMS'] = ElasticSearchApiParams(
-        cluster_base_url=os.environ['FB_ADS_ELASTIC_SEARCH_CLUSTER'],
+        client=Elasticsearch(cloud_id=os.environ['FB_ADS_ELASTIC_SEARCH_CLOUD_ID'],
+                             api_key=(os.environ['FB_ADS_ELASTIC_SEARCH_API_ID'],
+                                      os.environ['FB_ADS_ELASTIC_SEARCH_API_KEY'])),
         api_id=os.environ['FB_ADS_ELASTIC_SEARCH_API_ID'],
         api_key=os.environ['FB_ADS_ELASTIC_SEARCH_API_KEY'],
         fb_pages_index_name=os.environ['FB_ADS_ELASTIC_SEARCH_FB_PAGES_INDEX_NAME'],
