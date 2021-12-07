@@ -1,5 +1,6 @@
 certifi
 dhash
+elasticsearch
 Flask
 Flask-Cors
 Flask-Caching
