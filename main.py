@@ -14,7 +14,8 @@ from google.cloud import secretmanager
 import google.cloud.logging
 from google.cloud.logging_v2.handlers.handlers import EXCLUDED_LOGGER_DEFAULTS
 
-from blueprints.ad_observatory_api import ad_observatory_api, ads_search
+from blueprints.ad_observatory_api import ad_observatory_api
+from blueprints.common import ads_search
 from blueprints.google_dashboard import blueprint as google_dashboard
 from common.elastic_search import ElasticSearchApiParams
 from common import caching, running_on_app_engine
