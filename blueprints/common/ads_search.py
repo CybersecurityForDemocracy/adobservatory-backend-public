@@ -310,6 +310,7 @@ def get_ad_data_from_full_text_search(query, page_id, min_date, max_date, region
     logging.debug('Full text search results: %s', query_results)
     archive_ids = query_results['data']
     logging.debug('Full text search returned %d archive_ids: %s', len(archive_ids), archive_ids)
+    logging.info('Full text search returned %d archive_ids', len(archive_ids))
     if not archive_ids:
         logging.info('Full text search returned no results.')
         return []
@@ -512,10 +513,10 @@ def get_ads():
     ad_data = handle_ad_search(
         topic_id, min_date, max_date, gender, age_group, region, language, order_by,
         order_direction, num_requested, offset, full_text_search_query, page_id)
+    logging.info('handle_ad_search returned %d ads', len(ad_data))
 
-    ret = [get_ad_record(row) for row in ad_data]
-
-    return Response(json.dumps(ret), mimetype='application/json')
+    return Response(json.dumps([get_ad_record(row) for row in ad_data]),
+                    mimetype='application/json')
 
 def handle_ad_cluster_search(topic_id, min_date, max_date, gender, age_group, region, language,
                              order_by, order_direction, num_requested, offset,
