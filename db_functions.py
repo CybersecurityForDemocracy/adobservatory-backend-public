@@ -578,13 +578,14 @@ class FBAdsDBInterface(BaseDBInterface):
             impressions.max_spend, impressions.min_impressions,
             impressions.max_impressions,
             array_agg(DISTINCT ad_creatives.ad_creative_body_language) as languages
-            FROM ads JOIN ad_creatives USING(archive_id) JOIN ad_topics USING(archive_id)
+            FROM distinct_archive_ids JOIN ads USING(archive_id) JOIN ad_creatives USING(archive_id) JOIN ad_topics USING(archive_id)
             JOIN impressions USING(archive_id)
             {join_region_impressions_clause}
             {join_demo_impressions_clause}
             {where_clause}
             GROUP BY archive_id, impressions.last_active_date, impressions.min_spend,
-            impressions.max_spend, impressions.min_impressions, impressions.max_impressions
+            impressions.max_spend, impressions.min_impressions, impressions.max_impressions,
+            ads.currency, ads.ad_delivery_start_time
             {order_by_clause} LIMIT %(limit)s OFFSET %(offset)s'''
             ).format(join_region_impressions_clause=join_region_impressions_clause,
                      join_demo_impressions_clause=join_demo_impressions_clause,
