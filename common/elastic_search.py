@@ -104,6 +104,7 @@ def query_elastic_search_fb_ad_creatives_index(elastic_search_api_params, ad_cre
         elastic_search_api_params.client,
         body=query,
         index=elastic_search_api_params.fb_ad_creatives_index_name,
+        size=10000,
         scroll='1m')
 
     data = {}
