@@ -4,6 +4,7 @@ elasticsearch
 Flask
 Flask-Cors
 Flask-Caching
+flask-talisman
 google-api-core
 grpcio
 google-auth
