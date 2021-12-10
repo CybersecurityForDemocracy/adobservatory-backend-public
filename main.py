@@ -10,6 +10,7 @@ import os
 from dotenv import load_dotenv
 from flask import Flask
 from flask_cors import CORS
+from flask_talisman import Talisman
 from google.cloud import secretmanager
 import google.cloud.logging
 from google.cloud.logging_v2.handlers.handlers import EXCLUDED_LOGGER_DEFAULTS
@@ -80,6 +81,8 @@ def init_server():
         api_key=os.environ['FB_ADS_ELASTIC_SEARCH_API_KEY'],
         fb_pages_index_name=os.environ['FB_ADS_ELASTIC_SEARCH_FB_PAGES_INDEX_NAME'],
         fb_ad_creatives_index_name=os.environ['FB_ADS_ELASTIC_SEARCH_FB_AD_CREATIVES_INDEX_NAME'])
+
+    Talisman(server)
 
     logging.debug('Route map: %s', server.url_map)
 
