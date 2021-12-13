@@ -10,6 +10,7 @@ grpcio
 google-auth
 google-cloud-logging
 google-cloud-secret-manager
+gunicorn
 hiredis
 humanize
 memoization

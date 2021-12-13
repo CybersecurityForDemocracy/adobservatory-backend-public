@@ -5,5 +5,5 @@ import multiprocessing
 workers = 1
 threads = multiprocessing.cpu_count() * 4 + 1
 worker_class = 'gthread'
-# Allow request workers to run for up to 15 min
-timeout = 900
+# Allow request workers to run for up to 1 hour
+timeout = (60 * 60)
