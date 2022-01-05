@@ -17,25 +17,22 @@ import pycountry
 import simplejson as json
 
 import db_functions
-from common import elastic_search, date_utils, caching
+from common import elastic_search, date_utils, caching, us_regions
 
 blueprint = Blueprint('ads_search', __name__)
 
 ArchiveIDAndSimHash = namedtuple('ArchiveIDAndSimHash', ['archive_id', 'sim_hash'])
 
-def load_json_from_path(file_path):
-    with open(file_path) as open_file:
-        return json.load(open_file)
-
-
 FILTER_OPTIONS_DATA_DIR = 'data/'
-REGION_FILTERS_DATA = load_json_from_path(os.path.join(FILTER_OPTIONS_DATA_DIR, 'regions.json'))
-GENDER_FILTERS_DATA = load_json_from_path(os.path.join(FILTER_OPTIONS_DATA_DIR, 'genders.json'))
-AGE_RANGE_FILTERS_DATA = load_json_from_path(os.path.join(FILTER_OPTIONS_DATA_DIR,
-                                                          'ageRanges.json'))
-ORDER_BY_FILTERS_DATA = load_json_from_path(os.path.join(FILTER_OPTIONS_DATA_DIR, 'orderBy.json'))
-ORDER_DIRECTION_FILTERS_DATA = load_json_from_path(os.path.join(FILTER_OPTIONS_DATA_DIR,
-                                                           'orderDirections.json'))
+REGION_FILTERS_DATA = us_regions.REGION_FILTERS_DATA
+GENDER_FILTERS_DATA = us_regions.load_json_from_path(os.path.join(FILTER_OPTIONS_DATA_DIR,
+                                                                  'genders.json'))
+AGE_RANGE_FILTERS_DATA = us_regions.load_json_from_path(os.path.join(FILTER_OPTIONS_DATA_DIR,
+                                                                     'ageRanges.json'))
+ORDER_BY_FILTERS_DATA = us_regions.load_json_from_path(os.path.join(FILTER_OPTIONS_DATA_DIR,
+                                                                    'orderBy.json'))
+ORDER_DIRECTION_FILTERS_DATA = us_regions.load_json_from_path(os.path.join(FILTER_OPTIONS_DATA_DIR,
+                                                                           'orderDirections.json'))
 
 ALLOWED_ORDER_BY_FIELDS_CLUSTER_SEARCH = set(['min_ad_delivery_start_time', 'max_last_active_date',
                                               'min_ad_creation_time', 'max_ad_creation_time',
