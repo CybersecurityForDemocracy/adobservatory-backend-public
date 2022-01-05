@@ -40,12 +40,8 @@
     "value": "Delaware"
   },
   {
-    "label": "District Of Columbia",
-    "value": "District Of Columbia"
-  },
-  {
-    "label": "Federated States Of Micronesia",
-    "value": "Federated States Of Micronesia"
+    "label": "Washington, District of Columbia",
+    "value": "Washington, District of Columbia"
   },
   {
     "label": "Florida",
@@ -174,10 +170,6 @@
   {
     "label": "Oregon",
     "value": "Oregon"
-  },
-  {
-    "label": "Palau",
-    "value": "Palau"
   },
   {
     "label": "Pennsylvania",
