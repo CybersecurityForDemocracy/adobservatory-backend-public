@@ -49,7 +49,7 @@ class DatetimeISOFormatJSONEncoder(json.JSONEncoder):
                 return o.isoformat()
         except TypeError:
             pass
-        return JSONEncoder.default(self, o)
+        return json.JSONEncoder.default(self, o)
 
 @caching.global_cache.memoize()
 def generate_time_periods(max_date, min_date, span_in_days=7):
