@@ -92,16 +92,6 @@ def get_active_days_in_range(
     days_in_range = dates.apply(active_days_in_range, axis=1)
     return days_in_range.replace([np.inf, -np.inf], 0).fillna(0)
 
-def get_spend_per_day(ad_spend_records):
-    """Calculate average spend per day over the life of an ad in a dataframe."""
-    timedeltas = ad_spend_records['last_active_date'].sub(
-        ad_spend_records['ad_delivery_start_time'])
-    # add 1 to timedelta.days because we include both ad_delivery_start_time and last_active_day
-    timedeltas = timedeltas.apply(lambda x: float(max(x.days + 1, 0)))
-    # Divide by zero below is treated as +inf which we replace with 0
-    spends = ad_spend_records['spend'].astype('float').div(timedeltas)
-    return spends.replace([np.inf, -np.inf], 0).fillna(0)
-
 @blueprint.route('/total_spend/by_page/of_region/<region_name>')
 @caching.global_cache.cached(query_string=True,
                              response_filter=caching.cache_if_response_no_server_error,
@@ -385,7 +375,6 @@ def spend_by_week_for_topic(topic_name, region_name, start_date, end_date, time_
     ad_spend_data['last_active_date'] = ad_spend_data['last_active_date'].apply(
         lambda x: x if x else datetime.date.today()+datetime.timedelta(days=1))
 
-    #  ad_spend_data['spend_per_day'] = get_spend_per_day(ad_spend_data)
     for i in range(len(periods)-1):
         period_end_date = periods[i]
         period_start_date = periods[i+1] + datetime.timedelta(days=1)
