@@ -551,8 +551,8 @@ def spend_by_time_period_by_topic_of_page_in_region(page_id, region_name, start_
     max_end_day = max(map(itemgetter('end_day'), page_spend_over_time))
     max_end_day = min(max_end_day, end_date)
 
-    weeks = date_utils.generate_time_periods(max_date=max_end_day, min_date=start_date,
-                                  span_in_days=7)
+    weeks = date_utils.generate_time_periods(
+        max_date=max_end_day, min_date=start_date, span_in_days=7)
 
     spend_by_time_period = assign_spend_to_timewindows(weeks, 'topic_name', page_spend_over_time)
 
@@ -596,7 +596,8 @@ def spend_by_time_period_by_topic_of_region(region_name, start_date, end_date):
     max_end_day = max(map(itemgetter('end_day'), region_spend_over_time))
     max_end_day = min(max_end_day, end_date)
 
-    weeks = date_utils.generate_time_periods(max_date=max_end_day, min_date=start_date, span_in_days=7)
+    weeks = date_utils.generate_time_periods(
+        max_date=max_end_day, min_date=start_date, span_in_days=7)
 
     spend_by_time_period = assign_spend_to_timewindows(weeks, 'topic_name', region_spend_over_time)
 
