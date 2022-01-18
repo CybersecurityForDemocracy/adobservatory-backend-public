@@ -102,26 +102,6 @@ def get_spend_per_day(ad_spend_records):
     spends = ad_spend_records['spend'].astype('float').div(timedeltas)
     return spends.replace([np.inf, -np.inf], 0).fillna(0)
 
-@caching.global_cache.memoize()
-def generate_time_periods(max_date, min_date, span_in_days=7):
-    """Generate list of datetime.date span_in_days apart [max_date, min_date). Starting at max_date
-    and working backwards.
-
-    Args:
-        max_date: datetime.date latest date from which to work backwards from. Included in list.
-        min_date: datetime.date date which list should not pass. Only included in list if it occurs
-            exactly N weeks from max_date.
-        span_in_days: int number of days each span should be
-    Returns:
-        list of datetime.dates starting with max_date and all dates 7 days apart after that until
-        min_date.
-    """
-    def date_n_days_ago(days):
-        return max_date - datetime.timedelta(days=days)
-    return list(
-        itertools.takewhile(
-            lambda x: x >= min_date, map(date_n_days_ago, range(0, 365, span_in_days))))
-
 @blueprint.route('/total_spend/by_page/of_region/<region_name>')
 @caching.global_cache.cached(query_string=True,
                              response_filter=caching.cache_if_response_no_server_error,
@@ -224,7 +204,7 @@ def spending_by_week_by_spender_of_region(page_id, region_name, start_date, end_
                 page_id, region_name, aggregate_by)
             if not end_date:
                 return None
-        weeks = generate_time_periods(
+        weeks = date_utils.generate_time_periods(
             max_date=end_date, min_date=start_date, span_in_days=7)
         page_spend_by_week = db_interface.page_spend_in_region_by_week(
             page_id, region_name, weeks=weeks, aggregate_by=aggregate_by)
@@ -396,7 +376,7 @@ def spend_by_week_for_topic(topic_name, region_name, start_date, end_date, time_
     if ad_spend_records is None:
         return None
 
-    periods = generate_time_periods(
+    periods = date_utils.generate_time_periods(
         max_date=end_date, min_date=start_date, span_in_days=time_period_length)
 
     ad_spend_data = pd.DataFrame.from_records(ad_spend_records)
@@ -519,7 +499,7 @@ def spend_by_time_period_by_topic_of_page(page_id, start_date, end_date, aggrega
     if not page_spend_over_time:
         return None
 
-    weeks = generate_time_periods(max_date=end_date, min_date=start_date, span_in_days=7)
+    weeks = date_utils.generate_time_periods(max_date=end_date, min_date=start_date, span_in_days=7)
 
     spend_by_time_period = assign_spend_to_timewindows(weeks, 'topic_name', page_spend_over_time)
 
@@ -571,7 +551,7 @@ def spend_by_time_period_by_topic_of_page_in_region(page_id, region_name, start_
     max_end_day = max(map(itemgetter('end_day'), page_spend_over_time))
     max_end_day = min(max_end_day, end_date)
 
-    weeks = generate_time_periods(max_date=max_end_day, min_date=start_date,
+    weeks = date_utils.generate_time_periods(max_date=max_end_day, min_date=start_date,
                                   span_in_days=7)
 
     spend_by_time_period = assign_spend_to_timewindows(weeks, 'topic_name', page_spend_over_time)
@@ -616,7 +596,7 @@ def spend_by_time_period_by_topic_of_region(region_name, start_date, end_date):
     max_end_day = max(map(itemgetter('end_day'), region_spend_over_time))
     max_end_day = min(max_end_day, end_date)
 
-    weeks = generate_time_periods(max_date=max_end_day, min_date=start_date, span_in_days=7)
+    weeks = date_utils.generate_time_periods(max_date=max_end_day, min_date=start_date, span_in_days=7)
 
     spend_by_time_period = assign_spend_to_timewindows(weeks, 'topic_name', region_spend_over_time)
 
@@ -759,7 +739,7 @@ def spend_by_time_period_by_purpose_of_page_in_region(page_id, region_name, star
     if not page_spend_over_time:
         return None
 
-    weeks = generate_time_periods(max_date=end_date, min_date=start_date, span_in_days=7)
+    weeks = date_utils.generate_time_periods(max_date=end_date, min_date=start_date, span_in_days=7)
 
     spend_by_time_period = assign_spend_to_timewindows(weeks, 'purpose', page_spend_over_time)
 
