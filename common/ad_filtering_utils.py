@@ -1,6 +1,5 @@
 import os
 import json
-import logging
 
 import db_functions
 
@@ -44,7 +43,6 @@ def parse_age_range_value(age_range):
     raise ValueError('Unknown age_range value: %s' % age_range)
 
 def parse_region_label_to_value(region):
-    logging.debug('parsing region label to value: %s', region)
     if region is None:
         return None
     if region and region.lower() == 'all':
