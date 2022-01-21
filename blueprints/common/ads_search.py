@@ -284,12 +284,12 @@ def get_ad_cluster_data_from_full_text_search(query, page_id, min_date, max_date
 
 @caching.global_cache.memoize(timeout=date_utils.ONE_DAY_IN_SECONDS)
 def get_ad_cluster_data_for_page_id(page_id, min_date, max_date, region, gender, age_group,
-                                    language, order_by, order_direction, limit):
+                                    language, topic_id, order_by, order_direction, limit):
     with db_functions.get_fb_ads_database_connection() as db_connection:
         db_interface = db_functions.FBAdsDBInterface(db_connection)
         return db_interface.ad_cluster_details_for_page_id(
             page_id, min_date=min_date, max_date=max_date, region=region, gender=gender,
-            age_group=age_group, language=language, order_by=order_by,
+            age_group=age_group, language=language, topic_id=topic_id, order_by=order_by,
             order_direction=order_direction, limit=limit)
 
 @caching.global_cache.memoize(timeout=date_utils.ONE_DAY_IN_SECONDS)
@@ -319,12 +319,12 @@ def get_ad_data_from_full_text_search(query, page_id, min_date, max_date, region
 
 @caching.global_cache.memoize(timeout=date_utils.ONE_DAY_IN_SECONDS)
 def get_ad_data_for_page_id(page_id, min_date, max_date, region, gender, age_group, language,
-                            order_by, order_direction, limit):
+                            topic_id, order_by, order_direction, limit):
     with db_functions.get_fb_ads_database_connection() as db_connection:
         db_interface = db_functions.FBAdsDBInterface(db_connection)
         return db_interface.ad_details_of_page_id(
             page_id, min_date=min_date, max_date=max_date, region=region, gender=gender,
-            age_group=age_group, language=language, order_by=order_by,
+            age_group=age_group, language=language, topic_id=topic_id, order_by=order_by,
             order_direction=order_direction, limit=limit)
 
 @caching.global_cache.memoize(timeout=date_utils.ONE_DAY_IN_SECONDS)
@@ -468,10 +468,10 @@ def handle_ad_search(topic_id, min_date, max_date, gender, age_group, region, la
             order_direction=order_direction, limit=limit)
 
     elif page_id:
-        results = get_ad_data_for_page_id(page_id, min_date=min_date, max_date=max_date, region=region,
-                                       gender=gender, age_group=age_group, language=language,
-                                       order_by=order_by, order_direction=order_direction,
-                                       limit=limit)
+        results = get_ad_data_for_page_id(page_id, min_date=min_date, max_date=max_date,
+                                          region=region, gender=gender, age_group=age_group,
+                                          language=language, topic_id=topic_id, order_by=order_by,
+                                          order_direction=order_direction, limit=limit)
     else:
         results = get_ad_data_for_topic(
             topic_id, min_date=min_date, max_date=max_date, region=region, gender=gender,
@@ -583,7 +583,7 @@ def handle_ad_cluster_search(topic_id, min_date, max_date, gender, age_group, re
     elif page_id:
         results = get_ad_cluster_data_for_page_id(
             page_id=page_id, min_date=min_date, max_date=max_date, region=region, gender=gender,
-            age_group=age_group, language=language, order_by=order_by,
+            age_group=age_group, language=language, topic_id=topic_id, order_by=order_by,
             order_direction=order_direction, limit=limit)
     else:
         results = get_ad_cluster_data_for_topic(

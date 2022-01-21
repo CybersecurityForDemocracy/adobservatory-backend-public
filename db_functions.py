@@ -595,8 +595,7 @@ class FBAdsDBInterface(BaseDBInterface):
         return cursor.fetchall()
 
     def ad_details_of_page_id(self, page_id, min_date, max_date, region, gender, age_group,
-                                       language, order_by=None, order_direction=None, limit=50,
-                                       offset=0):
+                              language, topic_id, order_by=None, order_direction=None, limit=50, offset=0):
         """Get ad data from ads with specified page_id and matching other specified constraints.
 
         Args:
@@ -611,6 +610,7 @@ class FBAdsDBInterface(BaseDBInterface):
             age_group: str age group for which ad clusters must have impressions.
             language: str 2 letter lnaguage code for which ad clusters must have an ad with that
                 language.
+            topic_id: int, topic ads must have.
             limit: int, max number of rows to fetch.
             offset: int, number of results to offset returned rows by. used for pagination.
         Returns:
@@ -647,6 +647,13 @@ class FBAdsDBInterface(BaseDBInterface):
             language_where_clause = sql.SQL('AND ad_creatives.ad_creative_body_language = %(language)s')
             query_args['language'] = language
 
+        join_ad_topics_clause = sql.SQL('')
+        topic_id_where_clause = sql.SQL('')
+        if topic_id:
+            join_ad_topics_clause = sql.SQL(' JOIN ad_topics USING(archive_id) ')
+            topic_id_where_clause = sql.SQL('AND topic_id = %(topic_id)s')
+            query_args['topic_id'] = topic_id
+
         if order_by and order_direction:
             if order_direction not in set(['ASC', 'DESC']):
                 raise ValueError('Invalid ORDER BY directive: \'%s\'' % order_direction)
@@ -663,7 +670,7 @@ class FBAdsDBInterface(BaseDBInterface):
                 page_owner_clause=PAGE_OWNER_CLAUSE)
         where_clause = sql.SQL(' ').join([archive_ids_and_date_where_clause, region_where_clause,
                                           gender_where_clause, age_group_where_clause,
-                                          language_where_clause])
+                                          language_where_clause, topic_id_where_clause])
         query = sql.SQL(
             '''
             SELECT archive_id, currency,
@@ -675,12 +682,14 @@ class FBAdsDBInterface(BaseDBInterface):
             JOIN impressions USING(archive_id)
             {join_region_impressions_clause}
             {join_demo_impressions_clause}
+            {join_ad_topics_clause}
             JOIN page_metadata USING(page_id) {where_clause}
             GROUP BY archive_id, impressions.last_active_date, impressions.min_spend,
             impressions.max_spend, impressions.min_impressions, impressions.max_impressions
             {order_by_clause} LIMIT %(limit)s OFFSET %(offset)s'''
             ).format(join_region_impressions_clause=join_region_impressions_clause,
                      join_demo_impressions_clause=join_demo_impressions_clause,
+                     join_ad_topics_clause=join_ad_topics_clause,
                      where_clause=where_clause, order_by_clause=order_by_clause)
         cursor.execute(query, query_args)
         logging.debug('ad_details_of_page_id query: %s', cursor.query.decode())
@@ -880,7 +889,7 @@ class FBAdsDBInterface(BaseDBInterface):
         return cursor.fetchall()
 
     def ad_cluster_details_for_page_id(self, page_id, min_date, max_date, region, gender, age_group,
-                                       language, order_by=None, order_direction=None, limit=50,
+                                       language, topic_id, order_by=None, order_direction=None, limit=50,
                                        offset=0):
         """Get ad cluster data for clusters with ads from specified page_id and matching other
         specified constraints.
@@ -897,6 +906,7 @@ class FBAdsDBInterface(BaseDBInterface):
             age_group: str age group for which ad clusters must have impressions.
             language: str 2 letter lnaguage code for which ad clusters must have an ad with that
                 language.
+            topic_id: int topic ad_clusters must have
             limit: int, max number of rows to fetch.
             offset: int, number of results to offset returned rows by. used for pagination.
         Returns:
@@ -928,6 +938,13 @@ class FBAdsDBInterface(BaseDBInterface):
             language_where_clause = sql.SQL('AND ad_cluster_languages.language = %(language)s')
             query_args['language'] = language
 
+        join_ad_cluster_topics_clause = sql.SQL('')
+        topic_id_where_clause = sql.SQL('')
+        if topic_id:
+            join_ad_cluster_topics_clause = sql.SQL(' JOIN ad_cluster_topics USING(ad_cluster_id) ')
+            topic_id_where_clause = sql.SQL('AND topic_id = %(topic_id)s')
+            query_args['topic_id'] = topic_id
+
         if order_by and order_direction:
             if order_direction not in set(['ASC', 'DESC']):
                 raise ValueError('Invalid ORDER BY directive: \'%s\'' % order_direction)
@@ -943,7 +960,7 @@ class FBAdsDBInterface(BaseDBInterface):
             'ad_cluster_metadata.max_last_active_date >= %(min_date)s)')
         where_clause = sql.SQL(' ').join([archive_ids_and_date_where_clause, region_where_clause,
                                           gender_where_clause, age_group_where_clause,
-                                          language_where_clause])
+                                          language_where_clause, topic_id_where_clause])
         query = sql.SQL(
             'SELECT ad_cluster_metadata.ad_cluster_id, ad_cluster_metadata.canonical_archive_id, '
             'min_ad_delivery_start_time, max_last_active_date, ad_cluster_metadata.min_spend_sum, '
@@ -958,13 +975,16 @@ class FBAdsDBInterface(BaseDBInterface):
             'JOIN ad_cluster_region_impression_results USING (ad_cluster_id) '
             'JOIN ad_cluster_demo_impression_results USING(ad_cluster_id) '
             'LEFT JOIN ad_cluster_languages USING(ad_cluster_id) '
-            'LEFT JOIN ad_cluster_currencies USING(ad_cluster_id) {where_clause} '
+            'LEFT JOIN ad_cluster_currencies USING(ad_cluster_id) '
+            '{join_ad_cluster_topics_clause} '
+            '{where_clause} '
             'GROUP BY ad_cluster_metadata.ad_cluster_id, ad_cluster_metadata.canonical_archive_id, '
             'min_ad_delivery_start_time, max_last_active_date, ad_cluster_metadata.min_spend_sum, '
             'ad_cluster_metadata.max_spend_sum, ad_cluster_metadata.min_impressions_sum, '
             'ad_cluster_metadata.max_impressions_sum, cluster_size, num_pages {order_by_clause} '
             'LIMIT %(limit)s OFFSET %(offset)s'
-            ).format(where_clause=where_clause, order_by_clause=order_by_clause)
+            ).format(join_ad_cluster_topics_clause=join_ad_cluster_topics_clause, where_clause=where_clause,
+                     order_by_clause=order_by_clause)
         cursor.execute(query, query_args)
         logging.debug('ad_cluster_details_for_page_id query: %s', cursor.query.decode())
         return cursor.fetchall()
