@@ -137,7 +137,7 @@ def get_filter_options():
                              response_filter=caching.cache_if_response_no_server_error,
                              timeout=date_utils.SIX_HOURS_IN_SECONDS)
 def topic_names():
-    return Respone(json.dumps(ad_filtering_utils.topic_names()), mimetype='application/json')
+    return Response(json.dumps(ad_filtering_utils.topic_names()), mimetype='application/json')
 
 def make_ad_screenshot_url(archive_id):
     return AD_SCREENSHOT_URL_TEMPLATE % {
