@@ -4,8 +4,6 @@ import datetime
 import io
 import logging
 from operator import itemgetter
-import os
-import os.path
 import time
 
 import dhash
@@ -17,22 +15,11 @@ import pycountry
 import simplejson as json
 
 import db_functions
-from common import elastic_search, date_utils, caching, us_regions
+from common import elastic_search, date_utils, caching, ad_filtering_utils
 
 blueprint = Blueprint('ads_search', __name__)
 
 ArchiveIDAndSimHash = namedtuple('ArchiveIDAndSimHash', ['archive_id', 'sim_hash'])
-
-FILTER_OPTIONS_DATA_DIR = 'data/'
-REGION_FILTERS_DATA = us_regions.REGION_FILTERS_DATA
-GENDER_FILTERS_DATA = us_regions.load_json_from_path(os.path.join(FILTER_OPTIONS_DATA_DIR,
-                                                                  'genders.json'))
-AGE_RANGE_FILTERS_DATA = us_regions.load_json_from_path(os.path.join(FILTER_OPTIONS_DATA_DIR,
-                                                                     'ageRanges.json'))
-ORDER_BY_FILTERS_DATA = us_regions.load_json_from_path(os.path.join(FILTER_OPTIONS_DATA_DIR,
-                                                                    'orderBy.json'))
-ORDER_DIRECTION_FILTERS_DATA = us_regions.load_json_from_path(os.path.join(FILTER_OPTIONS_DATA_DIR,
-                                                                           'orderDirections.json'))
 
 ALLOWED_ORDER_BY_FIELDS_CLUSTER_SEARCH = set(['min_ad_delivery_start_time', 'max_last_active_date',
                                               'min_ad_creation_time', 'max_ad_creation_time',
@@ -91,11 +78,6 @@ def humanize_int(i):
         return humanize.intcomma(i)
     return humanize.intword(i)
 
-def get_topic_id_to_name_map():
-    with db_functions.get_fb_ads_database_connection() as db_connection:
-        db_interface = db_functions.FBAdsDBInterface(db_connection)
-        return db_interface.topics()
-
 def get_cluster_languages_code_to_name():
     with db_functions.get_fb_ads_database_connection() as db_connection:
         db_interface = db_functions.FBAdsDBInterface(db_connection)
@@ -139,16 +121,14 @@ def get_language_filter_options():
                              timeout=date_utils.SIX_HOURS_IN_SECONDS)
 def get_filter_options():
     """Options for filtering. Used by FE to populate filter selectors."""
-    topics_filter_data = [{'label': key, 'value': str(val)} for key, val in
-                          get_topic_id_to_name_map().items()]
     return Response(
-        json.dumps(
-            {'topics': topics_filter_data,
-            'regions': REGION_FILTERS_DATA,
-            'genders': GENDER_FILTERS_DATA,
-            'ageRanges': AGE_RANGE_FILTERS_DATA,
-            'orderByOptions': ORDER_BY_FILTERS_DATA,
-            'orderDirections': ORDER_DIRECTION_FILTERS_DATA,
+        json.dumps({
+            'topics': ad_filtering_utils.topics_filter_data(),
+            'regions': ad_filtering_utils.REGION_FILTERS_DATA,
+            'genders': ad_filtering_utils.GENDER_FILTERS_DATA,
+            'ageRanges': ad_filtering_utils.AGE_RANGE_FILTERS_DATA,
+            'orderByOptions': ad_filtering_utils.ORDER_BY_FILTERS_DATA,
+            'orderDirections': ad_filtering_utils.ORDER_DIRECTION_FILTERS_DATA,
             'languages': get_language_filter_options()}),
         mimetype='application/json')
 
@@ -157,8 +137,7 @@ def get_filter_options():
                              response_filter=caching.cache_if_response_no_server_error,
                              timeout=date_utils.SIX_HOURS_IN_SECONDS)
 def topic_names():
-    return Response(
-        json.dumps(list(get_topic_id_to_name_map().keys())), mimetype='application/json')
+    return Response(json.dumps(ad_filtering_utils.topic_names()), mimetype='application/json')
 
 def make_ad_screenshot_url(archive_id):
     return AD_SCREENSHOT_URL_TEMPLATE % {
@@ -445,19 +424,9 @@ def handle_ad_search(topic_id, min_date, max_date, gender, age_group, region, la
         except ValueError:
             max_date = date_utils.parse_date_arg(max_date)
 
-    if gender:
-        if gender.lower() == 'all':
-            gender = None
-        elif gender.lower() == 'f':
-            gender = 'female'
-        elif gender.lower() == 'm':
-            gender = 'male'
-        elif gender.lower() == 'u':
-            gender = 'unknown'
-    if region and region.lower() == 'all':
-        region = None
-    if age_group and age_group.lower() == 'all':
-        age_group = None
+    gender = ad_filtering_utils.parse_gender_value(gender)
+    region = ad_filtering_utils.parse_region_label_to_value(region)
+    age_group = ad_filtering_utils.parse_age_range_value(age_group)
     if language and language.lower() == 'all':
         language = None
 
@@ -557,19 +526,9 @@ def handle_ad_cluster_search(topic_id, min_date, max_date, gender, age_group, re
         except ValueError:
             max_date = date_utils.parse_date_arg(max_date)
 
-    if gender:
-        if gender.lower() == 'all':
-            gender = None
-        elif gender.lower() == 'f':
-            gender = 'female'
-        elif gender.lower() == 'm':
-            gender = 'male'
-        elif gender.lower() == 'u':
-            gender = 'unknown'
-    if region and region.lower() == 'all':
-        region = None
-    if age_group and age_group.lower() == 'all':
-        age_group = None
+    gender = ad_filtering_utils.parse_gender_value(gender)
+    region = ad_filtering_utils.parse_region_label_to_value(region)
+    age_group = ad_filtering_utils.parse_age_range_value(age_group)
     if language and language.lower() == 'all':
         language = None
 
