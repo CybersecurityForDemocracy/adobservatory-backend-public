@@ -650,7 +650,7 @@ class FBAdsDBInterface(BaseDBInterface):
         join_ad_topics_clause = sql.SQL('')
         topic_id_where_clause = sql.SQL('')
         if topic_id:
-            join_ad_topics_clause = sql.SQL(' JOIN ad_topics USING(archive_id) ')
+            join_ad_topics_clause = sql.SQL('JOIN ad_topics USING(archive_id)')
             topic_id_where_clause = sql.SQL('AND topic_id = %(topic_id)s')
             query_args['topic_id'] = topic_id
 
@@ -678,7 +678,7 @@ class FBAdsDBInterface(BaseDBInterface):
             impressions.max_spend, impressions.min_impressions,
             impressions.max_impressions,
             array_agg(DISTINCT ad_creatives.ad_creative_body_language) as languages
-            FROM ads JOIN ad_creatives USING(archive_id) JOIN ad_topics USING(archive_id)
+            FROM ads JOIN ad_creatives USING(archive_id)
             JOIN impressions USING(archive_id)
             {join_region_impressions_clause}
             {join_demo_impressions_clause}
