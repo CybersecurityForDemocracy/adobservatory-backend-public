@@ -4,19 +4,16 @@ import time
 from collections import defaultdict
 from datetime import date, datetime
 import logging
+import json
 
 from psycopg2 import sql
 from psycopg2.extras import RealDictCursor
-import ujson as json
-import requests
+import elasticsearch
 
 import config_utils
-from common.elastic_search import ElasticSearchAuth
 import db_functions
 
 logging.basicConfig(level=logging.INFO)
-logging.getLogger("requests").setLevel(logging.WARNING)
-logging.getLogger("urllib3").setLevel(logging.WARNING)
 
 PAGES_TABLE_FETCH_BATCH_SIZE = 50000
 AD_CREATIVES_TABLE_FETCH_BATCH_SIZE = 50000
@@ -29,7 +26,7 @@ def json_serial(obj):
         return obj.isoformat()
     raise TypeError("Type %s not serializable" % type(obj))
 
-def insert_rows_into_es(es_cluster_name, api_id, api_key, rows, action, index):
+def insert_rows_into_es(es_client, rows, action, index):
     if not rows:
         return
 
@@ -48,14 +45,10 @@ def insert_rows_into_es(es_cluster_name, api_id, api_key, rows, action, index):
     logging.info("Sending %d records for indexing", len(rows))
     records = '\n'.join(records) + "\n"
     records = records.encode('utf-8')
-    headers = {'Accept': 'application/json', 'Content-type': 'application/json'}
-    url = "https://%(es_cluster_name)s/_bulk" % {'es_cluster_name': es_cluster_name}
-    response = requests.post(url, data=records, headers=headers,
-                             auth=ElasticSearchAuth(api_id=api_id, api_key=api_key))
-    if response.status_code != requests.codes.ok:
-        logging.fatal(
-            "Problem encounted while bulk inserting records into ES. status_code: %s\nHeaders:%s "
-            "response text: %s",response.status_code, response.headers, response.text)
+    response = es_client.bulk(operations=records)
+    if response.meta.status != 200 or response.body['errors']:
+        logging.error('Bulk updated failed:\n%s\n%s', response.meta, response.body)
+
 
 def fetch_all_tables(conn):
     '''Fetch all table names from DB'''
@@ -82,8 +75,7 @@ def fetch_topics(conn):
     rows = cursor.fetchall()
     return rows
 
-def move_pages_to_es(db_connection_params, es_cluster_name, pages_index_name,
-                     api_id, api_key, days_in_past_to_sync):
+def move_pages_to_es(db_connection_params, es_client, pages_index_name, days_in_past_to_sync):
     '''Transfer page data from Postgres to Elasticsearch'''
     db_connection = db_functions.get_database_connection(db_connection_params)
     total_records_inserted = 0
@@ -121,8 +113,7 @@ def move_pages_to_es(db_connection_params, es_cluster_name, pages_index_name,
                 record['lifelong_amount_spent'] = row['lifelong_amount_spent']
                 es_records.append(record)
 
-            insert_rows_into_es(es_cluster_name, api_id=api_id, api_key=api_key,
-                                rows=es_records, action='index', index=pages_index_name)
+            insert_rows_into_es(es_client, rows=es_records, action='index', index=pages_index_name)
             total_records_inserted += len(es_records)
             logging.debug("Inserted %s page records.", total_records_inserted)
 
@@ -131,8 +122,7 @@ def move_pages_to_es(db_connection_params, es_cluster_name, pages_index_name,
     logging.info("Copied %s page records in %d seconds.", total_records_inserted,
                  int(time.time() - start_time))
 
-def move_ads_to_es(db_connection_params, es_cluster_name, ad_creatives_index_name,
-                   api_id, api_key, days_in_past_to_sync):
+def move_ads_to_es(db_connection_params, es_client, ad_creatives_index_name, days_in_past_to_sync):
     '''Transfer page data from Postgres to Elasticsearch'''
     total_records_inserted = 0
     logging.info("Copying records from ad creatives table to elasticsearch.")
@@ -184,8 +174,8 @@ def move_ads_to_es(db_connection_params, es_cluster_name, ad_creatives_index_nam
                     record[key] = row[key]
                 es_records.append(record)
 
-            insert_rows_into_es(es_cluster_name, api_id=api_id, api_key=api_key,
-                                rows=es_records, action='index', index=ad_creatives_index_name)
+            insert_rows_into_es(es_client, rows=es_records, action='index',
+                                index=ad_creatives_index_name)
             total_records_inserted += len(es_records)
             logging.debug("Inserted %s ad creatives records.", total_records_inserted)
 
@@ -197,18 +187,28 @@ def move_ads_to_es(db_connection_params, es_cluster_name, ad_creatives_index_nam
 def main(argv):
     config = config_utils.get_config(argv[0])
     db_connection_params = config_utils.get_database_connection_params_from_config(config)
-    es_cluster_name = config['ELASTIC_SEARCH']['CLUSTER_NAME']
+    es_cloud_id = config['ELASTIC_SEARCH'].get('CLOUD_ID', fallback=None)
+    es_cluster_name = config['ELASTIC_SEARCH'].get('CLUSTER_NAME', fallback=None)
+    if not any([es_cloud_id, es_cluster_name]):
+        logging.fatal('Must provide elastic search cluster name or cloud ID')
     pages_index_name = config['ELASTIC_SEARCH']['PAGES_INDEX_NAME']
     ad_creatives_index_name = config['ELASTIC_SEARCH']['AD_CREATIVES_INDEX_NAME']
     api_id = config['ELASTIC_SEARCH']['API_ID']
     api_key = config['ELASTIC_SEARCH']['API_KEY']
     days_in_past_to_sync = config.getint('ELASTIC_SEARCH', 'DAYS_IN_PAST_TO_SYNC', fallback=0)
-    logging.info('Populating elastic search cluster %s, indexes: %s, days_in_past_to_sync: %s',
-                 es_cluster_name, [pages_index_name, ad_creatives_index_name], days_in_past_to_sync)
-    move_pages_to_es(db_connection_params, es_cluster_name, pages_index_name,
-                     api_id, api_key, days_in_past_to_sync)
-    move_ads_to_es(db_connection_params, es_cluster_name, ad_creatives_index_name,
-                   api_id, api_key, days_in_past_to_sync)
+    if es_cloud_id:
+        elasticsearch_client = elasticsearch.Elasticsearch(
+            cloud_id=es_cloud_id, api_key=(api_id, api_key))
+        logging.info('Populating elastic search cloud ID %s, indexes: %s, days_in_past_to_sync: %s',
+                     es_cloud_id, [pages_index_name, ad_creatives_index_name], days_in_past_to_sync)
+    else:
+        elasticsearch_client = elasticsearch.Elasticsearch(
+            es_cluster_name, api_key=(api_id, api_key))
+        logging.info('Populating elastic search cluster %s, indexes: %s, days_in_past_to_sync: %s',
+                     es_cluster_name, [pages_index_name, ad_creatives_index_name], days_in_past_to_sync)
+    move_pages_to_es(db_connection_params, elasticsearch_client, pages_index_name, days_in_past_to_sync)
+    move_ads_to_es(db_connection_params, elasticsearch_client, ad_creatives_index_name,
+                   days_in_past_to_sync)
 
 if __name__ == '__main__':
     if len(sys.argv) < 2:
