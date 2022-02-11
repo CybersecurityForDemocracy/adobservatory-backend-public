@@ -45,7 +45,10 @@ def insert_rows_into_es(es_client, rows, action, index):
     logging.info("Sending %d records for indexing", len(rows))
     records = '\n'.join(records) + "\n"
     records = records.encode('utf-8')
-    es_client.bulk(operations=records)
+    response = es_client.bulk(operations=records)
+    if response.meta.status != 200 or response.body['errors']:
+        logging.error('Bulk updated failed:\n%s\n%s', response.meta, response.body)
+
 
 def fetch_all_tables(conn):
     '''Fetch all table names from DB'''
