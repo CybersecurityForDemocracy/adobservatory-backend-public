@@ -45,7 +45,7 @@ def insert_rows_into_es(es_client, rows, action, index):
     logging.info("Sending %d records for indexing", len(rows))
     records = '\n'.join(records) + "\n"
     records = records.encode('utf-8')
-    es_client.bulk(records)
+    es_client.bulk(operations=records)
 
 def fetch_all_tables(conn):
     '''Fetch all table names from DB'''
