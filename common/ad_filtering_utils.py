@@ -1,6 +1,8 @@
 import os
 import json
 
+from flask import current_app
+
 import db_functions
 
 FILTER_OPTIONS_DATA_DIR = 'data/'
