@@ -19,6 +19,10 @@ AGE_RANGE_LABEL_TO_VALUE = {item['label']: item['value'] for item in AGE_RANGE_F
 ORDER_BY_FILTERS_DATA = load_json_from_path('orderBy.json')
 ORDER_DIRECTION_FILTERS_DATA = load_json_from_path('orderDirections.json')
 
+AD_SCREENSHOT_URL_TEMPLATE = (
+    'https://storage.googleapis.com/%(bucket_name)s/%(archive_id)s.png')
+
+
 def parse_gender_value(gender):
     if gender is None:
         return None
@@ -61,3 +65,8 @@ def topic_names():
 
 def topics_filter_data():
     return [{'label': key, 'value': str(val)} for key, val in get_topic_id_to_name_map().items()]
+
+def make_ad_screenshot_url(archive_id):
+    return AD_SCREENSHOT_URL_TEMPLATE % {
+        'bucket_name': current_app.config['FB_AD_CREATIVE_GCS_BUCKET'], 'archive_id': archive_id}
+
