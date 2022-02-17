@@ -37,9 +37,6 @@ ORDER_BY_FIELD_REWRITE_MAP = {
         }
 ALLOWED_ORDER_DIRECTIONS = set(['ASC', 'DESC'])
 
-AD_SCREENSHOT_URL_TEMPLATE = (
-    'https://storage.googleapis.com/%(bucket_name)s/%(archive_id)s.png')
-
 AD_SCREENER_REVERSE_IMAGE_SEARCH_NAME_TO_BIT_THRESHOLD = {
     'very high': 2,
     'high': 8,
@@ -139,11 +136,6 @@ def get_filter_options():
 def topic_names():
     return Response(json.dumps(ad_filtering_utils.topic_names()), mimetype='application/json')
 
-def make_ad_screenshot_url(archive_id):
-    return AD_SCREENSHOT_URL_TEMPLATE % {
-        'bucket_name': current_app.config['FB_AD_CREATIVE_GCS_BUCKET'], 'archive_id': archive_id}
-
-
 def get_ad_cluster_record(ad_cluster_data_row):
     ad_cluster_data = {}
     ad_cluster_data['ad_cluster_id'] = ad_cluster_data_row['ad_cluster_id']
@@ -170,7 +162,7 @@ def get_ad_cluster_record(ad_cluster_data_row):
     ad_cluster_data['total_impressions'] = '%s - %s' % (
         humanize_int(int(min_impressions_sum)), humanize_int(int(max_impressions_sum)))
 
-    ad_cluster_data['url'] = make_ad_screenshot_url(ad_cluster_data_row['canonical_archive_id'])
+    ad_cluster_data['url'] = ad_filtering_utils.make_ad_screenshot_url(ad_cluster_data_row['canonical_archive_id'])
     ad_cluster_data['cluster_size'] = humanize_int(int(ad_cluster_data_row['cluster_size']))
     ad_cluster_data['num_pages'] = humanize_int(int(ad_cluster_data_row['num_pages']))
     ad_cluster_data['currencies'] = ad_cluster_data_row['currencies']
@@ -201,7 +193,7 @@ def get_ad_record(ad_data_row):
     ad_data['total_impressions'] = '%s - %s' % (
         humanize_int(int(min_impressions)), humanize_int(int(max_impressions)))
 
-    ad_data['url'] = make_ad_screenshot_url(ad_data['archive_id'])
+    ad_data['url'] = ad_filtering_utils.make_ad_screenshot_url(ad_data['archive_id'])
 
     return ad_data
 
