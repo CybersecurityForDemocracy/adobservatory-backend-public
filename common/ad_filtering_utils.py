@@ -69,4 +69,3 @@ def topics_filter_data():
 def make_ad_screenshot_url(archive_id):
     return AD_SCREENSHOT_URL_TEMPLATE % {
         'bucket_name': current_app.config['FB_AD_CREATIVE_GCS_BUCKET'], 'archive_id': archive_id}
-
