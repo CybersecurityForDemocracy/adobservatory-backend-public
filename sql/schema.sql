@@ -894,23 +894,6 @@ CREATE MATERIALIZED VIEW IF NOT EXISTS raw_targetings_for_page_owner AS
   SELECT page_owner, page_id, observed_at, count(observations.ad_id) as ad_count,
     waist_ui_type AS category,
     CASE waist_ui_type
-      WHEN 'ACTIONABLE_INSIGHTS' THEN jsonb_build_object('description', description)
-      WHEN 'AGE_GENDER' THEN jsonb_build_object('age_min', age_min, 'age_max', age_max, 'gender', gender)
-      WHEN 'BCT' THEN jsonb_build_object('name', name)
-      WHEN 'CONNECTION' THEN jsonb_build_object('name', name)
-      WHEN 'CUSTOM_AUDIENCES_DATAFILE' THEN jsonb_build_object('match_keys', dfca_data#>'{match_keys}', 'ca_owner_name', dfca_data#>'{ca_owner_name}')
-      WHEN 'CUSTOM_AUDIENCES_LOOKALIKE' THEN jsonb_build_object('ca_owner_name', dfca_data#>'{ca_owner_name}')
-      WHEN 'ED_STATUS' THEN jsonb_build_object('edu_status', edu_status)
-      WHEN 'EDU_SCHOOLS' THEN serialized_data
-      WHEN 'FRIENDS_OF_CONNECTION' THEN jsonb_build_object('name', name)
-      WHEN 'INTERESTS' THEN interests
-      WHEN 'LOCALE' THEN jsonb_build_object('locales', locales)
-      WHEN 'LOCATION' THEN jsonb_build_object('location_name', location_name, 'location_type', location_type)
-      WHEN 'RELATIONSHIP_STATUS' THEN serialized_data
-      WHEN 'WORK_JOB_TITLES' THEN serialized_data
-      ELSE NULL
-    END AS subcategory_json,
-    CASE waist_ui_type
       WHEN 'ACTIONABLE_INSIGHTS' THEN description
       WHEN 'AGE_GENDER' THEN concat(age_min, '-', age_max, ' ', gender)
       WHEN 'BCT' THEN name
@@ -931,31 +914,15 @@ CREATE MATERIALIZED VIEW IF NOT EXISTS raw_targetings_for_page_owner AS
     JOIN observations.observations ON observations.ads.id = observations.observations.ad_id
     JOIN observations.targetings USING (ad_id)
     LEFT OUTER JOIN page_metadata USING (page_id)
-    GROUP BY observations.ads.id, page_id, category, subcategory, subcategory_json, page_owner, observed_at;
+    GROUP BY observations.ads.id, page_id, category, subcategory, page_owner, observed_at;
 
 CREATE INDEX IF NOT EXISTS raw_targetings_for_page_owner_page_owner_idx ON raw_targetings_for_page_owner USING btree(page_owner);
 CREATE INDEX IF NOT EXISTS raw_targetings_for_page_owner_page_id_idx ON raw_targetings_for_page_owner USING btree(page_id);
+CREATE UNIQUE INDEX IF NOT EXISTS raw_targetings_for_page_owner_unique ON raw_targetings_for_page_owner (page_id, observed_at, category, subcategory);
 
 CREATE MATERIALIZED VIEW IF NOT EXISTS raw_targetings_for_page_id AS
   SELECT page_id, observed_at, count(observations.ad_id) as ad_count,
     waist_ui_type AS category,
-    CASE waist_ui_type
-      WHEN 'ACTIONABLE_INSIGHTS' THEN jsonb_build_object('description', description)
-      WHEN 'AGE_GENDER' THEN jsonb_build_object('age_min', age_min, 'age_max', age_max, 'gender', gender)
-      WHEN 'BCT' THEN jsonb_build_object('name', name)
-      WHEN 'CONNECTION' THEN jsonb_build_object('name', name)
-      WHEN 'CUSTOM_AUDIENCES_DATAFILE' THEN jsonb_build_object('match_keys', dfca_data#>'{match_keys}', 'ca_owner_name', dfca_data#>'{ca_owner_name}')
-      WHEN 'CUSTOM_AUDIENCES_LOOKALIKE' THEN jsonb_build_object('ca_owner_name', dfca_data#>'{ca_owner_name}')
-      WHEN 'ED_STATUS' THEN jsonb_build_object('edu_status', edu_status)
-      WHEN 'EDU_SCHOOLS' THEN serialized_data
-      WHEN 'FRIENDS_OF_CONNECTION' THEN jsonb_build_object('name', name)
-      WHEN 'INTERESTS' THEN interests
-      WHEN 'LOCALE' THEN jsonb_build_object('locales', locales)
-      WHEN 'LOCATION' THEN jsonb_build_object('location_name', location_name, 'location_type', location_type)
-      WHEN 'RELATIONSHIP_STATUS' THEN serialized_data
-      WHEN 'WORK_JOB_TITLES' THEN serialized_data
-      ELSE NULL
-    END AS subcategory_json,
     CASE waist_ui_type
       WHEN 'ACTIONABLE_INSIGHTS' THEN description
       WHEN 'AGE_GENDER' THEN concat(age_min, '-', age_max, ' ', gender)
@@ -977,9 +944,10 @@ CREATE MATERIALIZED VIEW IF NOT EXISTS raw_targetings_for_page_id AS
     JOIN observations.observations ON observations.ads.id = observations.observations.ad_id
     JOIN observations.targetings USING (ad_id)
     LEFT OUTER JOIN pages USING (page_id)
-    GROUP BY observations.ads.id, page_id, category, subcategory, subcategory_json, observed_at;
+    GROUP BY observations.ads.id, page_id, category, subcategory, observed_at;
 
 CREATE INDEX IF NOT EXISTS raw_targetings_for_page_id_page_id_idx ON raw_targetings_for_page_id USING btree(page_id);
+CREATE UNIQUE INDEX IF NOT EXISTS raw_targetings_for_page_id_unique ON raw_targetings_for_page_id (page_id, observed_at, category, subcategory);
 
 CREATE MATERIALIZED VIEW IF NOT EXISTS owned_page_info AS
   SELECT page_owner, page_name, page_id, array_agg(DISTINCT disclaimer) AS disclaimers
