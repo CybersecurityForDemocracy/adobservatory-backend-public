@@ -116,21 +116,6 @@ def get_top_spenders_for_region(region_name):
         return Response(status=204, mimetype='application/json')
     return Response(response_data, mimetype='application/json')
 
-@blueprint.route('/pages/<int:page_id>')
-@caching.global_cache.cached(query_string=True,
-                             response_filter=caching.cache_if_response_no_server_error,
-                             timeout=date_utils.SIX_HOURS_IN_SECONDS)
-def get_page_data(page_id):
-    with db_functions.get_fb_ads_database_connection() as db_connection:
-        db_interface = db_functions.FBAdsDBInterface(db_connection)
-        page_data = db_interface.get_page_data(page_id)
-        if page_data:
-            page_data['owned_pages'] = db_interface.owned_pages(page_id)
-
-    if page_data:
-        return Response(json.dumps(page_data), mimetype='application/json')
-    return Response(status=404, mimetype='application/json')
-
 @blueprint.route('/total_spend/of_page/<int:page_id>/of_region/<region_name>')
 @caching.global_cache.cached(query_string=True,
                              response_filter=caching.cache_if_response_no_server_error,
