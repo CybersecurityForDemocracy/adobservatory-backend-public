@@ -745,7 +745,6 @@ def get_cluster_id_from_archive_id(archive_id):
         abort(404)
     return Response(json.dumps({'cluster_id': ad_cluster_id}), mimetype='application/json')
 
-
 @blueprint.route('/pages/<int:page_id>')
 @caching.global_cache.cached(query_string=True,
                              response_filter=caching.cache_if_response_no_server_error,
