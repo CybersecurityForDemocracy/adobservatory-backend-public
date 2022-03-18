@@ -6,6 +6,7 @@
 """
 import logging
 import os
+import datetime
 
 from dotenv import load_dotenv
 from flask import Flask
@@ -58,6 +59,8 @@ def init_server():
         os.environ['AD_OBSERVATORY_API_USER_DATABASE_PASSWORD'] = get_secret_value(
             os.environ['AD_OBSERVATORY_API_USER_DATABASE_PASSWORD_SECRET_NAME'])
 
+    server.config['FB_ADS_SPEND_OLDEST_ALLOWED_DATE'] = datetime.date.fromisoformat(
+        os.environ.get('FB_ADS_SPEND_OLDEST_ALLOWED_DATE', '2020-07-01'))
     fb_ad_creative_gcs_bucket = os.environ['FB_AD_CREATIVE_GCS_BUCKET']
     server.config['FB_AD_CREATIVE_GCS_BUCKET'] = fb_ad_creative_gcs_bucket
     logging.info('Facebook ad creatives GCS bucket name: %s', fb_ad_creative_gcs_bucket)

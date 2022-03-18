@@ -12,6 +12,7 @@ env_variables:
   # user for database connection
   FB_ADS_DATABASE_USER: <PLACEHOLDER>
   # elastic search instance URL
+  FB_ADS_SPEND_OLDEST_ALLOWED_DATE: '2022-01-01'
   FB_ADS_ELASTIC_SEARCH_CLUSTER: <PLACEHOLDER>
   # API ID for elastic search API call auth
   FB_ADS_ELASTIC_SEARCH_API_ID: <PLACEHOLDER>

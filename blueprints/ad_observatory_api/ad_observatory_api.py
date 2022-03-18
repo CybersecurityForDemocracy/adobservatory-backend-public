@@ -5,7 +5,7 @@ import decimal
 import itertools
 from operator import itemgetter
 
-from flask import Blueprint, request, Response, abort
+from flask import Blueprint, request, Response, abort, current_app
 import humanize
 import numpy as np
 import pandas as pd
@@ -18,11 +18,11 @@ URL_PREFIX = '/api/v1'
 
 blueprint = Blueprint('ad_observatory_api', __name__)
 
-SPEND_ESTIMATE_OLDEST_DATE = datetime.date(year=2020, month=6, day=22)
-TOTAL_SPEND_OLDEST_ALLOWED_DATE = datetime.date(year=2020, month=7, day=1)
-
 OBSCURE_OBSERVATION_COUNT_AT_OR_BELOW = 5
 OBSCURE_OBSERVATION_COUNT_MESSAGE = '%s or less' % OBSCURE_OBSERVATION_COUNT_AT_OR_BELOW
+
+def spend_oldest_allowed_date():
+    return current_app.config['FB_ADS_SPEND_OLDEST_ALLOWED_DATE']
 
 def get_default_end_date():
     # Spend from most recent 7 days is unreliable due to delay in Facebook accounting. So we only
@@ -98,7 +98,7 @@ def get_active_days_in_range(
                              timeout=date_utils.SIX_HOURS_IN_SECONDS)
 def get_top_spenders_for_region(region_name):
     start_date = date_utils.parse_date_arg(request.args.get('start_date', '2020-06-02'),
-                          oldest_allowed_date=TOTAL_SPEND_OLDEST_ALLOWED_DATE)
+                          oldest_allowed_date=spend_oldest_allowed_date())
     end_date = parse_end_date_request_arg(request.args.get('end_date', None))
     aggregate_by = get_aggregate_by_request_arg(request.args)
 
@@ -122,7 +122,7 @@ def get_top_spenders_for_region(region_name):
                              timeout=date_utils.SIX_HOURS_IN_SECONDS)
 def get_total_spending_by_spender_in_region_since_date(page_id, region_name):
     start_date = date_utils.parse_date_arg(request.args.get('start_date', '2020-06-02'),
-                                oldest_allowed_date=TOTAL_SPEND_OLDEST_ALLOWED_DATE)
+                                oldest_allowed_date=spend_oldest_allowed_date())
     end_date = parse_end_date_request_arg(request.args.get('end_date', None))
     aggregate_by = get_aggregate_by_request_arg(request.args)
     if not start_date:
@@ -159,7 +159,7 @@ def get_total_spending_by_spender_in_region_since_date(page_id, region_name):
                              timeout=date_utils.SIX_HOURS_IN_SECONDS)
 def get_spending_by_week_by_spender_of_region(page_id, region_name):
     start_date = date_utils.parse_date_arg(request.args.get('start_date', '2020-06-01'),
-                                oldest_allowed_date=SPEND_ESTIMATE_OLDEST_DATE)
+                                oldest_allowed_date=spend_oldest_allowed_date())
     if not start_date:
         abort(400)
     end_date = parse_end_date_request_arg(request.args.get('end_date', None))
@@ -243,7 +243,7 @@ def discount_spend_outside_daterange(start_date, end_date, ad_spend_records):
 def get_spenders_for_topic_in_region(topic_name, region_name):
     record_count = int(request.args.get('count', '10'))
     start_date = date_utils.parse_date_arg(request.args.get('start_date', '2020-06-22'),
-                                oldest_allowed_date=TOTAL_SPEND_OLDEST_ALLOWED_DATE)
+                                oldest_allowed_date=spend_oldest_allowed_date())
     if not start_date:
         abort(400)
     end_date = parse_end_date_request_arg(request.args.get('end_date', None))
@@ -289,7 +289,7 @@ def spenders_for_topic_in_region(topic_name, region_name, start_date, end_date, 
                              timeout=date_utils.SIX_HOURS_IN_SECONDS)
 def get_top_topics_in_region(region_name):
     start_date = date_utils.parse_date_arg(request.args.get('start_date', '2020-06-22'),
-                                oldest_allowed_date=TOTAL_SPEND_OLDEST_ALLOWED_DATE)
+                                oldest_allowed_date=spend_oldest_allowed_date())
     if not start_date:
         abort(400)
     end_date = parse_end_date_request_arg(request.args.get('end_date', None))
@@ -329,7 +329,7 @@ def top_topics_in_region(region_name, start_date, end_date, max_records=None):
                              timeout=date_utils.SIX_HOURS_IN_SECONDS)
 def get_spend_by_week_for_topic(topic_name, region_name):
     start_date = date_utils.parse_date_arg(request.args.get('start_date', '2020-06-22'),
-                                oldest_allowed_date=SPEND_ESTIMATE_OLDEST_DATE)
+                                oldest_allowed_date=spend_oldest_allowed_date())
     time_period_unit = request.args.get('time_unit', 'week')
     time_period_length = parse_time_span_arg(time_period_unit)
     if not start_date or not time_period_length:
@@ -446,7 +446,7 @@ def assign_spend_to_timewindows(weeks_list, grouping_name, spend_query_result):
                              timeout=date_utils.SIX_HOURS_IN_SECONDS)
 def get_spend_by_time_period_by_topic_of_page(page_id):
     start_date = date_utils.parse_date_arg(request.args.get('start_date', '2020-06-23'),
-                                oldest_allowed_date=SPEND_ESTIMATE_OLDEST_DATE)
+                                oldest_allowed_date=spend_oldest_allowed_date())
     if not start_date:
         abort(400)
     end_date = parse_end_date_request_arg(request.args.get('end_date', None))
@@ -490,7 +490,7 @@ def spend_by_time_period_by_topic_of_page(page_id, start_date, end_date, aggrega
                              timeout=date_utils.SIX_HOURS_IN_SECONDS)
 def get_spend_by_time_period_by_topic_of_page_in_region(page_id, region_name):
     start_date = date_utils.parse_date_arg(request.args.get('start_date', '2020-06-23'),
-                                oldest_allowed_date=SPEND_ESTIMATE_OLDEST_DATE)
+                                oldest_allowed_date=spend_oldest_allowed_date())
     end_date = parse_end_date_request_arg(request.args.get('end_date', None))
     aggregate_by = get_aggregate_by_request_arg(request.args)
 
@@ -544,7 +544,7 @@ def spend_by_time_period_by_topic_of_page_in_region(page_id, region_name, start_
                              timeout=date_utils.SIX_HOURS_IN_SECONDS)
 def get_spend_by_time_period_by_topic_of_region(region_name):
     start_date = date_utils.parse_date_arg(request.args.get('start_date', '2020-06-23'),
-                                oldest_allowed_date=SPEND_ESTIMATE_OLDEST_DATE)
+                                oldest_allowed_date=spend_oldest_allowed_date())
     end_date = parse_end_date_request_arg(request.args.get('end_date', None))
 
     if not start_date:
@@ -587,7 +587,7 @@ def spend_by_time_period_by_topic_of_region(region_name, start_date, end_date):
                              timeout=date_utils.SIX_HOURS_IN_SECONDS)
 def get_total_spend_by_purpose_of_page(page_id):
     start_date = date_utils.parse_date_arg(request.args.get('start_date', '2020-06-23'),
-                                oldest_allowed_date=TOTAL_SPEND_OLDEST_ALLOWED_DATE)
+                                oldest_allowed_date=spend_oldest_allowed_date())
     end_date = parse_end_date_request_arg(request.args.get('end_date', None))
     aggregate_by = get_aggregate_by_request_arg(request.args)
 
@@ -622,7 +622,7 @@ def total_spend_by_purpose_of_page(page_id, start_date, end_date, aggregate_by):
                              timeout=date_utils.SIX_HOURS_IN_SECONDS)
 def get_total_spend_by_purpose_of_region(region_name):
     start_date = date_utils.parse_date_arg(request.args.get('start_date', '2020-06-23'),
-                                oldest_allowed_date=TOTAL_SPEND_OLDEST_ALLOWED_DATE)
+                                oldest_allowed_date=spend_oldest_allowed_date())
     end_date = parse_end_date_request_arg(request.args.get('end_date', None))
 
     if not start_date:
@@ -650,7 +650,7 @@ def total_spend_by_purpose_of_region(region_name, start_date, end_date):
                              timeout=date_utils.SIX_HOURS_IN_SECONDS)
 def get_total_spend_by_purpose_of_page_of_region(page_id, region_name):
     start_date = date_utils.parse_date_arg(request.args.get('start_date', '2020-06-23'),
-                                oldest_allowed_date=TOTAL_SPEND_OLDEST_ALLOWED_DATE)
+                                oldest_allowed_date=spend_oldest_allowed_date())
     end_date = parse_end_date_request_arg(request.args.get('end_date', None))
     aggregate_by = get_aggregate_by_request_arg(request.args)
 
@@ -684,7 +684,7 @@ def total_spend_by_purpose_of_page_of_region(page_id, region_name, start_date, e
                              timeout=date_utils.SIX_HOURS_IN_SECONDS)
 def get_spend_by_time_period_by_purpose_of_page_in_region(page_id, region_name):
     start_date = date_utils.parse_date_arg(request.args.get('start_date', '2020-06-23'),
-                                oldest_allowed_date=SPEND_ESTIMATE_OLDEST_DATE)
+                                oldest_allowed_date=spend_oldest_allowed_date())
     end_date = parse_end_date_request_arg(request.args.get('end_date', None))
     aggregate_by = get_aggregate_by_request_arg(request.args)
 
@@ -732,7 +732,7 @@ def spend_by_time_period_by_purpose_of_page_in_region(page_id, region_name, star
                              timeout=date_utils.SIX_HOURS_IN_SECONDS)
 def get_total_spend_of_page_by_region(page_id):
     start_date = date_utils.parse_date_arg(request.args.get('start_date', '2020-06-23'),
-                                oldest_allowed_date=TOTAL_SPEND_OLDEST_ALLOWED_DATE)
+                                oldest_allowed_date=spend_oldest_allowed_date())
     if not start_date:
         abort(400)
     end_date = parse_end_date_request_arg(request.args.get('end_date', None))
@@ -786,7 +786,7 @@ def obscure_too_low_count_or_convert_count_to_humanized_int(rows):
                              timeout=date_utils.SIX_HOURS_IN_SECONDS)
 def get_targeting_category_counts_for_page(page_id):
     start_date =date_utils. parse_date_arg(request.args.get('start_date', '2020-06-22'),
-                                oldest_allowed_date=TOTAL_SPEND_OLDEST_ALLOWED_DATE)
+                                oldest_allowed_date=spend_oldest_allowed_date())
     if not start_date:
         abort(400)
     end_date = parse_end_date_request_arg(request.args.get('end_date', None))
