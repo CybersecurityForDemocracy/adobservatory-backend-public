@@ -914,11 +914,11 @@ CREATE MATERIALIZED VIEW IF NOT EXISTS raw_targetings_for_page_owner AS
     JOIN observations.observations ON observations.ads.id = observations.observations.ad_id
     JOIN observations.targetings USING (ad_id)
     LEFT OUTER JOIN page_metadata USING (page_id)
-    GROUP BY observations.ads.id, page_id, category, subcategory, page_owner, observed_at;
+    GROUP BY page_id, category, subcategory, page_owner, observed_at;
 
 CREATE INDEX IF NOT EXISTS raw_targetings_for_page_owner_page_owner_idx ON raw_targetings_for_page_owner USING btree(page_owner);
 CREATE INDEX IF NOT EXISTS raw_targetings_for_page_owner_page_id_idx ON raw_targetings_for_page_owner USING btree(page_id);
-CREATE UNIQUE INDEX IF NOT EXISTS raw_targetings_for_page_owner_unique ON raw_targetings_for_page_owner (page_id, observed_at, category, subcategory);
+CREATE UNIQUE INDEX IF NOT EXISTS raw_targetings_for_page_owner_unique ON raw_targetings_for_page_owner (page_owner, page_id, observed_at, category, md5(subcategory));
 
 CREATE MATERIALIZED VIEW IF NOT EXISTS raw_targetings_for_page_id AS
   SELECT page_id, observed_at, count(observations.ad_id) as ad_count,
@@ -947,7 +947,7 @@ CREATE MATERIALIZED VIEW IF NOT EXISTS raw_targetings_for_page_id AS
     GROUP BY observations.ads.id, page_id, category, subcategory, observed_at;
 
 CREATE INDEX IF NOT EXISTS raw_targetings_for_page_id_page_id_idx ON raw_targetings_for_page_id USING btree(page_id);
-CREATE UNIQUE INDEX IF NOT EXISTS raw_targetings_for_page_id_unique ON raw_targetings_for_page_id (page_id, observed_at, category, subcategory);
+CREATE UNIQUE INDEX IF NOT EXISTS raw_targetings_for_page_id_unique ON raw_targetings_for_page_id (page_id, observed_at, category, md5(subcategory));
 
 CREATE MATERIALIZED VIEW IF NOT EXISTS owned_page_info AS
   SELECT page_owner, page_name, page_id, array_agg(DISTINCT disclaimer) AS disclaimers
