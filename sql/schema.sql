@@ -32,14 +32,15 @@ CREATE TABLE ad_countries(
 CREATE TABLE impressions (
   archive_id bigint,
   ad_status bigint,
-  min_spend decimal(10, 2),
-  max_spend decimal(10, 2),
+  min_spend decimal(12, 2),
+  max_spend decimal(12, 2),
   min_impressions integer,
   max_impressions integer,
   last_modified_time timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
   potential_reach_min bigint,
   potential_reach_max bigint,
-  spend_estimate numeric(10,2)
+  spend_estimate numeric(12, 2),
+  impressions_estimate integer,
   PRIMARY KEY (archive_id),
   CONSTRAINT archive_id_fk FOREIGN KEY (archive_id) REFERENCES ads (archive_id) MATCH SIMPLE ON UPDATE NO ACTION ON DELETE NO ACTION
 );
@@ -152,24 +153,26 @@ CREATE TABLE demo_impression_results (
   archive_id bigint,
   age_group character varying,
   gender character varying,
-  min_spend decimal(10, 2),
-  max_spend decimal(10, 2),
+  min_spend decimal(12, 2),
+  max_spend decimal(12, 2),
   min_impressions integer,
   max_impressions integer,
   last_modified_time timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
-  spend_estimate numeric(10,2),
+  spend_estimate numeric(12, 2),
+  impressions_estimate integer,
   CONSTRAINT archive_id_fk FOREIGN KEY (archive_id) REFERENCES ads (archive_id) MATCH SIMPLE ON UPDATE NO ACTION ON DELETE NO ACTION,
   CONSTRAINT unique_demo_results UNIQUE(archive_id, age_group, gender)
 );
 CREATE TABLE region_impression_results (
   archive_id bigint,
   region character varying,
-  min_spend decimal(10, 2),
-  max_spend decimal(10, 2),
+  min_spend decimal(12, 2),
+  max_spend decimal(12, 2),
   min_impressions integer,
   max_impressions integer,
   last_modified_time timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
-  spend_estimate numeric(10,2),
+  spend_estimate numeric(12, 2),
+  impressions_estimate integer,
   CONSTRAINT archive_id_fk FOREIGN KEY (archive_id) REFERENCES ads (archive_id) MATCH SIMPLE ON UPDATE NO ACTION ON DELETE NO ACTION,
   CONSTRAINT unique_region_results UNIQUE(archive_id, region)
 );
@@ -186,6 +189,34 @@ CREATE TABLE snapshot_fetch_batches (
 CREATE TABLE ad_creative_body_recognized_entities_json (
   text_sha256_hash character varying PRIMARY KEY,
   named_entity_recognition_json jsonb NOT NULL
+);
+
+CREATE TABLE text_near_dupes_archive_id (
+  archive_id_1 bigint NOT NULL,
+  archive_id_2 bigint NOT NULL,
+  bit_difference int NOT NULL,
+  CONSTRAINT unique_text_archive_id_near_dupes_archive_id_pair UNIQUE(archive_id_1, archive_id_2)
+);
+
+CREATE TABLE image_near_dupes_archive_id (
+  archive_id_1 bigint NOT NULL,
+  archive_id_2 bigint NOT NULL,
+  bit_difference int NOT NULL,
+  CONSTRAINT unique_image_archive_id_near_dupes_archive_id_pair UNIQUE(archive_id_1, archive_id_2)
+);
+
+CREATE TABLE text_near_dupes_sim_hash (
+  sim_hash_1 text NOT NULL,
+  sim_hash_2 text NOT NULL,
+  bit_difference int NOT NULL,
+  CONSTRAINT unique_text_sim_hash_near_dupes_sim_hash_id_pair UNIQUE(sim_hash_1, sim_hash_2)
+);
+
+CREATE TABLE image_near_dupes_sim_hash (
+  sim_hash_1 text NOT NULL,
+  sim_hash_2 text NOT NULL,
+  bit_difference int NOT NULL,
+  CONSTRAINT unique_image_sim_hash_near_dupes_sim_hash_pair UNIQUE(sim_hash_1, sim_hash_2)
 );
 
 CREATE TABLE ad_clusters (
@@ -231,8 +262,8 @@ CREATE TABLE ad_cluster_demo_impression_results (
   ad_cluster_id bigint,
   age_group character varying,
   gender character varying,
-  min_spend_sum decimal(10, 2),
-  max_spend_sum decimal(10, 2),
+  min_spend_sum decimal(12, 2),
+  max_spend_sum decimal(12, 2),
   min_impressions_sum bigint,
   max_impressions_sum bigint,
   CONSTRAINT ad_cluster_id_fk FOREIGN KEY (ad_cluster_id) REFERENCES ad_cluster_metadata (ad_cluster_id) MATCH SIMPLE ON UPDATE NO ACTION ON DELETE NO ACTION,
@@ -241,8 +272,8 @@ CREATE TABLE ad_cluster_demo_impression_results (
 CREATE TABLE ad_cluster_region_impression_results (
   ad_cluster_id bigint,
   region character varying,
-  min_spend_sum decimal(10, 2),
-  max_spend_sum decimal(10, 2),
+  min_spend_sum decimal(12, 2),
+  max_spend_sum decimal(12, 2),
   min_impressions_sum bigint,
   max_impressions_sum bigint,
   CONSTRAINT ad_cluster_id_fk FOREIGN KEY (ad_cluster_id) REFERENCES ad_cluster_metadata (ad_cluster_id) MATCH SIMPLE ON UPDATE NO ACTION ON DELETE NO ACTION,
@@ -294,6 +325,21 @@ CREATE TABLE ad_ids (
   CONSTRAINT unique_ad_id_archive_id UNIQUE(ad_id, archive_id)
 );
 
+CREATE TABLE ad_creatives_link_data (
+    ad_creative_id bigserial PRIMARY KEY NOT NULL,
+    archive_id int8 NOT NULL,
+    ad_creative_link_host varchar NULL,
+    ad_creative_link_domain varchar NULL,
+    ad_creative_link_path varchar NULL,
+    ad_creative_link_query varchar NULL,
+    ad_creative_link_utm_medium varchar NULL,
+    ad_creative_link_utm_source varchar NULL,
+    ad_creative_link_utm_campaign varchar NULL,
+    ad_creative_link_utm_content varchar NULL,
+    last_modified_time timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT unique_creative_url_per_ad_creative_id UNIQUE (ad_creative_id),
+    CONSTRAINT ad_creative_id_fk FOREIGN KEY (ad_creative_id) REFERENCES ad_creatives(ad_creative_id)
+);
 
 -- Indices to increase ads_search_backend performance
 CREATE INDEX ad_clusters_ad_cluster_id_idx ON ad_clusters USING btree (ad_cluster_id);
@@ -321,6 +367,14 @@ CREATE INDEX region_impression_results_archive_id_idx ON region_impression_resul
 CREATE INDEX region_impression_results_region_idx ON region_impression_results USING btree(region);
 CREATE INDEX ad_creatives_image_sim_hash_idx ON ad_creatives USING btree(image_sim_hash);
 CREATE INDEX ad_creatives_text_sim_hash_idx ON ad_creatives USING btree(text_sim_hash);
+CREATE INDEX ad_creatives_last_modified_time_idx ON ad_creatives USING btree (last_modified_time);
+CREATE INDEX ad_creatives_link_data_host_idx ON ad_creatives_link_data USING btree (ad_creative_link_host);
+CREATE INDEX ad_creatives_link_data_utm_campaign_idx ON ad_creatives_link_data USING btree (ad_creative_link_utm_campaign);
+-- Indices for ad screener get similar ads feature
+CREATE INDEX image_near_dupes_archive_id_archive_id_2_idx ON image_near_dupes_archive_id USING btree(archive_id_2);
+CREATE INDEX text_near_dupes_archive_id_archive_id_2_idx ON text_near_dupes_archive_id USING btree(archive_id_2);
+CREATE INDEX image_near_dupes_sim_hash_sim_hash_2_idx ON image_near_dupes_sim_hash USING btree(sim_hash_2);
+CREATE INDEX text_near_dupes_sim_hash_sim_hash_2_idx ON text_near_dupes_sim_hash USING btree(sim_hash_2);
 -- Indices to increase last_modified_time lookup for sync
 CREATE INDEX ads_last_modified_time_idx ON ads USING btree (last_modified_time);
 CREATE INDEX impressions_last_modified_time_idx ON impressions USING btree(last_modified_time);
