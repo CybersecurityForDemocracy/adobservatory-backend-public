@@ -110,7 +110,8 @@ def move_pages_to_es(db_connection_params, es_client, pages_index_name, days_in_
                 record = {}
                 record['id'] = row['page_id']
                 record['page_name'] = row['page_name']
-                record['lifelong_amount_spent'] = row['lifelong_amount_spent']
+                # This field is used as a rank_feature, which requires a values greater than 0
+                record['lifelong_amount_spent'] = max(row['lifelong_amount_spent'], 0.1)
                 es_records.append(record)
 
             insert_rows_into_es(es_client, rows=es_records, action='index', index=pages_index_name)
