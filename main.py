@@ -43,14 +43,12 @@ def init_server():
 
 
     server = Flask(__name__)
-    server.register_blueprint(ads_search.blueprint,
-                                              url_prefix=ad_observatory_api.URL_PREFIX)
+    # ad observatory api. register ads search and google_dashboard blueprints as child blueprints so
+    # they inherit the parent's registered URL prefix
+    ad_observatory_api.blueprint.register_blueprint(ads_search.blueprint)
+    ad_observatory_api.blueprint.register_blueprint(google_dashboard.google_dashboard_blueprint)
     server.register_blueprint(ad_observatory_api.blueprint,
-                                              url_prefix=ad_observatory_api.URL_PREFIX)
-    server.register_blueprint(
-        google_dashboard.google_dashboard_blueprint,
-        url_prefix=google_dashboard.URL_PREFIX,
-    )
+                              url_prefix=ad_observatory_api.URL_PREFIX)
     caching.init_cache(server, cache_blueprint_url_prefix='/')
 
     if running_on_app_engine.running_on_app_engine():
