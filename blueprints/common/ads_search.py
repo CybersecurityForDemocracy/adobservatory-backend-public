@@ -113,7 +113,7 @@ def get_language_filter_options():
 
 
 @blueprint.route('/filter-options')
-@caching.global_cache.cached(query_string=True,
+@caching.global_cache.cached(query_string=False,
                              response_filter=caching.cache_if_response_no_server_error,
                              timeout=date_utils.SIX_HOURS_IN_SECONDS)
 def get_filter_options():
@@ -130,7 +130,7 @@ def get_filter_options():
         mimetype='application/json')
 
 @blueprint.route('/topics')
-@caching.global_cache.cached(query_string=True,
+@caching.global_cache.cached(query_string=False,
                              response_filter=caching.cache_if_response_no_server_error,
                              timeout=date_utils.SIX_HOURS_IN_SECONDS)
 def topic_names():
