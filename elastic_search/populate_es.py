@@ -16,7 +16,7 @@ import db_functions
 logging.basicConfig(level=logging.INFO)
 
 PAGES_TABLE_FETCH_BATCH_SIZE = 50000
-AD_CREATIVES_TABLE_FETCH_BATCH_SIZE = 50000
+AD_CREATIVES_TABLE_FETCH_BATCH_SIZE = 10000
 
 
 def json_serial(obj):
