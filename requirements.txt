@@ -27,3 +27,4 @@ requests
 retrying
 simplejson
 SQLAlchemy
+Werkzeug>=2.0,<2.1
