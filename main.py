@@ -54,8 +54,6 @@ def init_server():
     if running_on_app_engine.running_on_app_engine():
         os.environ['GOOGLE_ADS_DATABASE_PASSWORD'] = get_secret_value(
             os.environ['GOOGLE_ADS_DATABASE_PASSWORD_SECRET_NAME'])
-        os.environ['AD_OBSERVATORY_API_USER_DATABASE_PASSWORD'] = get_secret_value(
-            os.environ['AD_OBSERVATORY_API_USER_DATABASE_PASSWORD_SECRET_NAME'])
 
     server.config['FB_ADS_SPEND_OLDEST_ALLOWED_DATE'] = datetime.date.fromisoformat(
         os.environ.get('FB_ADS_SPEND_OLDEST_ALLOWED_DATE', '2020-07-01'))
