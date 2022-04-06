@@ -4,8 +4,6 @@ import itertools
 
 import simplejson as json
 
-from common import caching
-
 SIX_HOURS_IN_SECONDS = int(datetime.timedelta(hours=6).total_seconds())
 ONE_HOUR_IN_SECONDS = int(datetime.timedelta(hours=1).total_seconds())
 ONE_DAY_IN_SECONDS = int(datetime.timedelta(days=1).total_seconds())
@@ -51,7 +49,6 @@ class DatetimeISOFormatJSONEncoder(json.JSONEncoder):
             pass
         return json.JSONEncoder.default(self, o)
 
-@caching.global_cache.memoize()
 def generate_time_periods(max_date, min_date, span_in_days=7):
     """Generate list of datetime.date span_in_days apart [max_date, min_date). Starting at max_date
     and working backwards.
