@@ -14,7 +14,7 @@ Above command starts server listening on port 5000, and should be accessible at 
 ### Using redis caching locally
 NOTE: this requires docker installed on your local machine
 1. Start a redis instance. example docker command `docker run --name myredis -p 6379:6379 -d redis`
-1. Set following vars in `.env.ad-observatory-api`:
+1. Set following vars in `.env`:
 ```
 REDIS_HOST=localhost
 # This should be the port specified when staring the docker container (ex if using arg -p 1234:5678 this will be 1234)
