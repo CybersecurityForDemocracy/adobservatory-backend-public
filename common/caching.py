@@ -121,7 +121,7 @@ def cache_response_blocking_duplicate_generation_of_cache_payload(
         return decorated_function
     return decorator
 
-def memoize_response_blocking_duplicate_generation_of_cache_payload(timeout):
+def memoize_response_blocking_duplicate_generation_of_cache_payload(timeout=None):
     """If decorated function's response is not in cache, attempt to acquire a lock and execute
     function. This is a wrapper around flask-caching @memoize decorator that prevents duplicate work
     for same function call. (example: multiple threads/workers/backend executing an expensive DB
