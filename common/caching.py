@@ -99,10 +99,10 @@ def cache_response_blocking_duplicate_generation_of_cache_payload(
         timeout=date_utils.ONE_DAY_IN_SECONDS):
     """If decorated function's response is not in cache, attempt to acquire a lock and execute
     function. This is a wrapper around flask-caching @cached decorator that prevents duplicate work
-    for same request URL (path and args).  (example: multiple threads/workers/backend executing an
+    for same request URL (path and args). For example: multiple threads/workers/backend executing an
     expensive DB query at same time to generate result that will be cached, when really only one
-    thread/worker/backend needs to do that and other can wait for results of that instead of sending
-    a duplicate query to DB).
+    thread/worker/backend needs to do that and others can wait for results of that instead of
+    sending a duplicate query to DB.
     """
     def decorator(f):
         @functools.wraps(f)
@@ -116,19 +116,23 @@ def cache_response_blocking_duplicate_generation_of_cache_payload(
                                                             response_filter=response_filter,
                                                             timeout=timeout)(f)
             cache_key = cached_function.make_cache_key(*args, **kwargs)
+            # if results in cache, call the cached function to get the cached result. Otherwise
+            # acquire lock so that only the lock holder executes the uncached logic.
+            if global_cache.get(cache_key):
+                return cached_function(*args, **kwargs)
+
             with acquire_lock(cache_key):
-                return f(*args, **kwargs)
+                return cached_function(*args, **kwargs)
         return decorated_function
     return decorator
 
 def memoize_response_blocking_duplicate_generation_of_cache_payload(timeout):
     """If decorated function's response is not in cache, attempt to acquire a lock and execute
     function. This is a wrapper around flask-caching @memoize decorator that prevents duplicate work
-    for same function call. (example: multiple threads/workers/backend executing an expensive DB
-    query at same time to generate result that will be cached, when really only one
-    thread/worker/backend needs to do that and other can wait for results of that instead of sending
-    a duplicate query to DB).
-
+    for same function call. For example: multiple threads/workers/backend executing an
+    expensive DB query at same time to generate result that will be cached, when really only one
+    thread/worker/backend needs to do that and others can wait for results of that instead of
+    sending a duplicate query to DB.
     """
     def decorator(f):
         @functools.wraps(f)
@@ -140,6 +144,11 @@ def memoize_response_blocking_duplicate_generation_of_cache_payload(timeout):
             # then acquires the lock after the cache is populated).
             memoized_function = global_cache.memoize(timeout=timeout)(f)
             cache_key = memoized_function.make_cache_key(f, *args, **kwargs)
+            # if results in cache, call the memoized function to get the cached result. Otherwise
+            # acquire lock so that only the lock holder executes the uncached logic.
+            if global_cache.get(cache_key):
+                return memoized_function(*args, **kwargs)
+
             with acquire_lock(cache_key):
                 return memoized_function(*args, **kwargs)
         return decorated_function
